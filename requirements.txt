@@ -19,7 +19,6 @@ langchain-groq==1.1.2
 langchain-tavily==0.2.17
 langchain-community==0.3.0
 langgraph==0.2.0
-groq==0.9.0
 tavily-python==0.7.23
 certifi
 email-validator==2.3.0
