@@ -111,14 +111,18 @@ async def stream_response(
     db.commit()
 
     # ── CRITICAL FIX ──────────────────────────────────────────────────────────────
-    # SQLAlchemy ORM objects (current_user, agent) are bound to the current DB session.
-    # Once we leave this function and enter the async generator, that session is closed.
-    # Accessing current_user.id or agent.config inside the generator causes
-    # DetachedInstanceError. Fix: extract all needed values as plain Python types NOW,
-    # before the session closes. Plain ints, dicts, strings are not bound to any session.
-    user_id = current_user.id          # plain int — safe inside generator
-    agent_id = chat.agent_id           # plain int — safe inside generator
-    agent_config = dict(agent.config)  # plain dict — safe inside generator
+    # ALL SQLAlchemy ORM objects lose their session once StreamingResponse is returned.
+    # Extract EVERYTHING as plain Python types before the session closes.
+    user_id = current_user.id          # plain int
+    agent_id = chat.agent_id           # plain int
+    agent_config = dict(agent.config)  # plain dict
+
+    # conversation_history is a list of ORM objects — also detaches after session closes
+    # convert each to a plain dict so agent_runner can safely access .role and .message
+    history_dicts = [
+        {"role": h.role, "message": h.message}
+        for h in conversation_history
+    ]
 
     async def event_generator():
         full_response = []
@@ -126,8 +130,8 @@ async def stream_response(
         try:
             async for token in stream_agent(
                 user_message=message,
-                conversation_history=conversation_history,
-                agent_config=agent_config,  # use plain dict, not agent.config
+                conversation_history=history_dicts,
+                agent_config=agent_config,
             ):
                 full_response.append(token)
                 yield f"data: {json.dumps({'token': token})}\n\n"

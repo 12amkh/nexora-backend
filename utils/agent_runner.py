@@ -21,7 +21,6 @@ ssl._create_default_https_context = ssl.create_default_context
 os.environ["SSL_CERT_FILE"] = certifi.where()
 os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
 
-# ── Temperature Map ───────────────────────────────────────────────────────────────
 TONE_TEMPERATURE = {
     "professional": 0.3,
     "analytical":   0.2,
@@ -105,10 +104,13 @@ def build_system_prompt(config: dict) -> str:
 def format_history(conversation_history: list) -> list:
     formatted = []
     for entry in conversation_history:
-        if entry.role == "user":
-            formatted.append(HumanMessage(content=entry.message))
-        elif entry.role == "assistant":
-            formatted.append(AIMessage(content=entry.message))
+        # support both ORM objects (entry.role) and plain dicts (entry["role"])
+        role    = entry["role"]    if isinstance(entry, dict) else entry.role
+        message = entry["message"] if isinstance(entry, dict) else entry.message
+        if role == "user":
+            formatted.append(HumanMessage(content=message))
+        elif role == "assistant":
+            formatted.append(AIMessage(content=message))
     return formatted
 
 
@@ -153,24 +155,15 @@ async def stream_agent(
     logger.info(f"stream_agent: type={config.get('agent_type','custom')} web_search={config.get('use_web_search', True)}")
 
     if tools:
-        # phase 1: run tool calls (Tavily search) via ainvoke — must complete before streaming
-        # this gives the LLM the search results it needs to form its answer
-        agent        = create_react_agent(model=llm, tools=tools)
-        result       = await agent.ainvoke({"messages": all_messages})
-
-        # extract the full response text from ainvoke result
-        # then stream it character by character to simulate real streaming
-        # real Groq streaming after tool calls requires LangGraph streaming mode
-        # which we'll upgrade to in a future stage — this gives the same UX effect
+        agent    = create_react_agent(model=llm, tools=tools)
+        result   = await agent.ainvoke({"messages": all_messages})
         full_text = result["messages"][-1].content
 
-        # yield in small chunks so the client sees a smooth streaming effect
-        chunk_size = 3  # yield 3 characters at a time — smooth but not too many events
+        chunk_size = 3
         for i in range(0, len(full_text), chunk_size):
             yield full_text[i:i + chunk_size]
 
     else:
-        # no tools — stream directly from LLM, tokens arrive in real time
         async for chunk in llm.astream(all_messages):
             if chunk.content:
                 yield chunk.content
