@@ -11,13 +11,16 @@ RUN apt-get update && apt-get install -y \
 
 COPY . .
 
-# install directly to system python
-RUN /usr/local/bin/pip install --no-cache-dir --upgrade pip && \
-    /usr/local/bin/pip install --no-cache-dir -r requirements.txt
+# upgrade pip first
+RUN /usr/local/bin/pip install --no-cache-dir --upgrade pip
 
-# verify uvicorn is installed — if this fails, build fails (better than silent runtime error)
+# install uvicorn explicitly first to confirm it works
+RUN /usr/local/bin/pip install --no-cache-dir uvicorn==0.41.0
+
+# install the rest
+RUN /usr/local/bin/pip install --no-cache-dir -r requirements.txt
+
+# verify
 RUN /usr/local/bin/python -m uvicorn --version
-
-ENV APP_VERSION=2
 
 CMD ["/usr/local/bin/python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
