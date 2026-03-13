@@ -25,8 +25,6 @@ MAX_MESSAGE_LENGTH = 4000
 
 
 # ── Standard Response ─────────────────────────────────────────────────────────────
-# POST /chat/run — waits for full response, returns single JSON object
-# best for: simple integrations, mobile apps, API clients
 @router.post(
     "/run",
     response_model=ChatResponse,
@@ -52,13 +50,11 @@ async def run_agent(
     if not agent:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent {chat.agent_id} not found.")
 
-    # load history BEFORE saving new message — avoid sending it twice to LLM
     conversation_history = db.query(Conversation).filter(
         Conversation.agent_id == chat.agent_id,
         Conversation.user_id == current_user.id,
     ).order_by(Conversation.created_at).all()
 
-    # save user message
     db.add(Conversation(agent_id=chat.agent_id, user_id=current_user.id, message=message, role="user"))
     db.commit()
 
@@ -72,7 +68,6 @@ async def run_agent(
         logger.error(f"run_agent failed: agent={chat.agent_id} user={current_user.id}: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI agent encountered an error. Please try again.")
 
-    # save and return AI response
     ai_message = Conversation(agent_id=chat.agent_id, user_id=current_user.id, message=ai_response, role="assistant")
     db.add(ai_message)
     db.commit()
@@ -83,14 +78,6 @@ async def run_agent(
 
 
 # ── Streaming Response ────────────────────────────────────────────────────────────
-# POST /chat/stream — streams tokens via SSE as they're generated
-# best for: web frontend, showing real-time typing effect
-#
-# SSE format — each line sent to client looks like:
-#   data: {"token": "The"}
-#   data: {"token": " latest"}
-#   data: {"token": " news"}
-#   data: {"done": true, "message_id": 42}
 @router.post(
     "/stream",
     summary="Send a message and stream the AI response token by token (SSE)",
@@ -115,70 +102,73 @@ async def stream_response(
     if not agent:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent {chat.agent_id} not found.")
 
-    # load history BEFORE saving new message
     conversation_history = db.query(Conversation).filter(
         Conversation.agent_id == chat.agent_id,
         Conversation.user_id == current_user.id,
     ).order_by(Conversation.created_at).all()
 
-    # save user message
     db.add(Conversation(agent_id=chat.agent_id, user_id=current_user.id, message=message, role="user"))
     db.commit()
 
-    # ── SSE Generator ─────────────────────────────────────────────────────────────
-    # this is an async generator function — it yields SSE-formatted strings
-    # FastAPI's StreamingResponse consumes this generator and sends each yield
-    # to the client immediately without buffering
+    # ── CRITICAL FIX ──────────────────────────────────────────────────────────────
+    # SQLAlchemy ORM objects (current_user, agent) are bound to the current DB session.
+    # Once we leave this function and enter the async generator, that session is closed.
+    # Accessing current_user.id or agent.config inside the generator causes
+    # DetachedInstanceError. Fix: extract all needed values as plain Python types NOW,
+    # before the session closes. Plain ints, dicts, strings are not bound to any session.
+    user_id = current_user.id          # plain int — safe inside generator
+    agent_id = chat.agent_id           # plain int — safe inside generator
+    agent_config = dict(agent.config)  # plain dict — safe inside generator
+
     async def event_generator():
-        full_response = []  # collect all tokens to save complete response at end
+        full_response = []
 
         try:
             async for token in stream_agent(
                 user_message=message,
                 conversation_history=conversation_history,
-                agent_config=agent.config,
+                agent_config=agent_config,  # use plain dict, not agent.config
             ):
                 full_response.append(token)
-
-                # format as SSE — "data: {json}\n\n" is the required SSE format
-                # the double newline \n\n signals end of one SSE message
                 yield f"data: {json.dumps({'token': token})}\n\n"
 
-            # stream finished — save complete response to DB
             complete_response = "".join(full_response)
 
-            ai_message = Conversation(
-                agent_id=chat.agent_id,
-                user_id=current_user.id,
-                message=complete_response,
-                role="assistant",
-            )
-            db.add(ai_message)
-            db.commit()
-            db.refresh(ai_message)
+            # open a fresh DB session inside the generator to save the response
+            # because the original session from Depends(get_db) is already closed
+            from database import SessionLocal
+            save_db = SessionLocal()
+            try:
+                ai_message = Conversation(
+                    agent_id=agent_id,
+                    user_id=user_id,
+                    message=complete_response,
+                    role="assistant",
+                )
+                save_db.add(ai_message)
+                save_db.commit()
+                save_db.refresh(ai_message)
+                message_id = ai_message.id
+            finally:
+                save_db.close()
 
-            # send final SSE event with message_id so client knows it's saved
-            yield f"data: {json.dumps({'done': True, 'message_id': ai_message.id, 'agent_id': chat.agent_id})}\n\n"
+            yield f"data: {json.dumps({'done': True, 'message_id': message_id, 'agent_id': agent_id})}\n\n"
 
             logger.info(
-                f"Stream completed: agent={chat.agent_id} user={current_user.id} "
+                f"Stream completed: agent={agent_id} user={user_id} "
                 f"tokens={len(full_response)} chars={len(complete_response)}"
             )
 
         except Exception as e:
-            logger.error(f"Stream failed: agent={chat.agent_id} user={current_user.id}: {e}", exc_info=True)
-            # send error event so client knows something went wrong
+            logger.error(f"Stream failed: agent={agent_id} user={user_id}: {e}", exc_info=True)
             yield f"data: {json.dumps({'error': 'Stream failed. Please try again.'})}\n\n"
 
-    # StreamingResponse wraps our generator
-    # media_type="text/event-stream" is required for SSE
-    # headers tell browser/client not to cache the stream and to keep connection open
     return StreamingResponse(
         event_generator(),
         media_type="text/event-stream",
         headers={
-            "Cache-Control":    "no-cache",
-            "X-Accel-Buffering": "no",       # disables nginx buffering in production
+            "Cache-Control":     "no-cache",
+            "X-Accel-Buffering": "no",
             "Connection":        "keep-alive",
         },
     )
