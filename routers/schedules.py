@@ -26,7 +26,7 @@ router = APIRouter(
 # business → 50 schedules ($149/month) — full automation platform
 # this is one of the strongest upgrade incentives — "set it and forget it"
 PLAN_SCHEDULE_LIMITS = {
-    "free":     0,
+    "free":     1,
     "starter":  3,
     "pro":      10,
     "business": 50,
