@@ -291,8 +291,6 @@ class AgentCreate(BaseModel):
         v = v.strip()
         if not v:
             raise ValueError("Agent name cannot be empty.")
-        if len(v) < 2:
-            raise ValueError("Agent name must be at least 2 characters.")
         if len(v) > 100:
             raise ValueError("Agent name cannot exceed 100 characters.")
         return v
