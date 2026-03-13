@@ -1,5 +1,6 @@
 # main.py
 
+import os
 import logging
 import time
 from contextlib import asynccontextmanager
@@ -25,6 +26,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# ── Environment Detection ─────────────────────────────────────────────────────────
+# Railway sets RAILWAY_ENVIRONMENT automatically
+# we use this to switch between dev and production behavior
+IS_PRODUCTION = os.getenv("RAILWAY_ENVIRONMENT") is not None
+FRONTEND_URL  = os.getenv("FRONTEND_URL", "http://localhost:3000")
+
+logger.info(f"Starting Nexora API — environment={'production' if IS_PRODUCTION else 'development'}")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -33,39 +42,56 @@ async def lifespan(app: FastAPI):
     logger.info("✅ Database tables verified")
     db_ok = check_db_connection()
     if not db_ok:
-        logger.critical("❌ Could not connect to database — check DATABASE_URL in .env")
-    logger.info("✅ Nexora API is ready to accept requests")
+        logger.critical("❌ Could not connect to database — check DATABASE_URL in environment variables")
+    logger.info("✅ Nexora API is ready")
     yield
     logger.info("🛑 Nexora API shutting down...")
 
 
 app = FastAPI(
     title="Nexora API",
-    description="AI Agent Builder Platform — Build and run AI agents automatically",
+    description="AI Agent Builder Platform",
     version="1.0.0",
     lifespan=lifespan,
-    docs_url="/docs",
-    redoc_url="/redoc",
+    # hide docs in production — prevents exposing your API structure publicly
+    docs_url=None if IS_PRODUCTION else "/docs",
+    redoc_url=None if IS_PRODUCTION else "/redoc",
 )
+
+# ── CORS ──────────────────────────────────────────────────────────────────────────
+# development: allow everything (easy local testing)
+# production: only allow your actual frontend URL
+# this prevents random websites from calling your API on behalf of users
+if IS_PRODUCTION:
+    allowed_origins = [
+        FRONTEND_URL,
+        "http://localhost:3000",
+        "http://localhost:3001",
+    ]
+else:
+    allowed_origins = ["*"]
+    logger.info("CORS open (development mode)")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
+# ── Request Logging ───────────────────────────────────────────────────────────────
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     start_time = time.time()
-    response = await call_next(request)
-    duration = (time.time() - start_time) * 1000
+    response   = await call_next(request)
+    duration   = (time.time() - start_time) * 1000
     logger.info(f"{request.method} {request.url.path} → {response.status_code} ({duration:.1f}ms)")
     return response
 
 
+# ── Global Error Handler ──────────────────────────────────────────────────────────
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Unhandled exception on {request.method} {request.url.path}: {exc}", exc_info=True)
@@ -75,6 +101,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
+# ── Routers ───────────────────────────────────────────────────────────────────────
 app.include_router(auth.router)
 app.include_router(agents.router)
 app.include_router(chat.router)
@@ -82,12 +109,25 @@ app.include_router(users.router)
 app.include_router(schedules.router)
 
 
+# ── System Endpoints ──────────────────────────────────────────────────────────────
 @app.get("/", tags=["System"])
 def home():
-    return {"product": "Nexora", "message": "AI Agent Builder API 🚀", "version": "1.0.0", "status": "running"}
+    return {
+        "product": "Nexora",
+        "message": "AI Agent Builder API 🚀",
+        "version": "1.0.0",
+        "status":  "running",
+    }
 
 
 @app.get("/health", tags=["System"])
 def health():
+    # Railway uses this endpoint to check if the app is alive
+    # if this returns non-200, Railway restarts the container
     db_ok = check_db_connection()
-    return {"status": "healthy" if db_ok else "degraded", "database": "connected" if db_ok else "unreachable", "version": "1.0.0"}
+    return {
+        "status":      "healthy" if db_ok else "degraded",
+        "database":    "connected" if db_ok else "unreachable",
+        "environment": "production" if IS_PRODUCTION else "development",
+        "version":     "1.0.0",
+    }
