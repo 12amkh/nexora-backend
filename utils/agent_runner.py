@@ -114,6 +114,31 @@ def format_history(conversation_history: list) -> list:
     return formatted
 
 
+# casual phrases that don't need web search — respond naturally from LLM knowledge
+CASUAL_PHRASES = {
+    "hi", "hello", "hey", "hiya", "howdy",
+    "how are you", "how are you doing", "how's it going", "what's up", "sup",
+    "good morning", "good afternoon", "good evening", "good night",
+    "thanks", "thank you", "thank you so much", "thx", "ty",
+    "bye", "goodbye", "see you", "see ya", "later",
+    "ok", "okay", "sure", "great", "awesome", "nice", "cool",
+    "yes", "no", "maybe", "got it", "understood",
+    "who are you", "what are you", "what can you do",
+    "help", "what is your name", "your name",
+}
+
+def is_casual_message(message: str) -> bool:
+    """Return True if the message is casual conversation that doesn't need web search."""
+    cleaned = message.lower().strip().rstrip("!?.,'\"")
+    # exact match against known casual phrases
+    if cleaned in CASUAL_PHRASES:
+        return True
+    # very short messages (1-2 words) are almost always casual
+    if len(cleaned.split()) <= 2 and len(cleaned) <= 20:
+        return True
+    return False
+
+
 # ── Standard (Non-Streaming) Agent ───────────────────────────────────────────────
 async def run_agent(
     user_message: str,
@@ -122,13 +147,15 @@ async def run_agent(
 ) -> str:
     config        = agent_config or {}
     llm           = build_llm(config)
-    tools         = build_tools(config)
+    # skip web search for casual messages even if agent has it enabled
+    # real life: you don't google "hi" — you just respond naturally
+    tools         = [] if is_casual_message(user_message) else build_tools(config)
     system_prompt = build_system_prompt(config)
     history       = format_history(conversation_history)
 
     all_messages = [SystemMessage(content=system_prompt)] + history + [HumanMessage(content=user_message)]
 
-    logger.info(f"run_agent: type={config.get('agent_type','custom')} tone={config.get('tone','professional')} web_search={config.get('use_web_search', True)}")
+    logger.info(f"run_agent: type={config.get('agent_type','custom')} tone={config.get('tone','professional')} web_search={bool(tools)}")
 
     agent  = create_react_agent(model=llm, tools=tools)
     result = await agent.ainvoke({"messages": all_messages})
@@ -146,13 +173,14 @@ async def stream_agent(
 ) -> AsyncGenerator[str, None]:
     config        = agent_config or {}
     llm           = build_llm(config)
-    tools         = build_tools(config)
+    # skip web search for casual messages — respond instantly without searching
+    tools         = [] if is_casual_message(user_message) else build_tools(config)
     system_prompt = build_system_prompt(config)
     history       = format_history(conversation_history)
 
     all_messages = [SystemMessage(content=system_prompt)] + history + [HumanMessage(content=user_message)]
 
-    logger.info(f"stream_agent: type={config.get('agent_type','custom')} web_search={config.get('use_web_search', True)}")
+    logger.info(f"stream_agent: type={config.get('agent_type','custom')} web_search={bool(tools)}")
 
     if tools:
         agent    = create_react_agent(model=llm, tools=tools)
