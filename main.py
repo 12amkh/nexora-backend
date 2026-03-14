@@ -71,6 +71,7 @@ if IS_PRODUCTION:
         "http://localhost:3000",
         "http://localhost:3001",
         "https://nexora-frontend-pi.vercel.app",
+        "https://nexora-frontend-pi.vercel.app/",
     ]
 else:
     allowed_origins = ["*"]
