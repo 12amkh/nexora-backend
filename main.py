@@ -16,6 +16,9 @@ from models.user import User
 from models.agent import Agent
 from models.conversation import Conversation
 from models.schedule import Schedule
+from routers import usage_router
+from services.usage_service import UsageService 
+from routers import admin
 
 load_dotenv()
 
@@ -108,6 +111,8 @@ app.include_router(agents.router)
 app.include_router(chat.router)
 app.include_router(users.router)
 app.include_router(schedules.router)
+app.include_router(usage_router.router)
+app.include_router(admin.router)
 
 
 # ── System Endpoints ──────────────────────────────────────────────────────────────

@@ -1,5 +1,3 @@
-# routers/chat.py
-
 import json
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status, Query
@@ -13,6 +11,8 @@ from models.conversation import Conversation
 from schemas.chat import ChatRequest, ChatResponse
 from utils.dependencies import get_current_user
 from utils.agent_runner import run_agent as call_agent, stream_agent
+from services.usage_service import UsageService
+
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +41,11 @@ async def run_agent(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Message cannot be empty.")
     if len(message) > MAX_MESSAGE_LENGTH:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Message too long. Max {MAX_MESSAGE_LENGTH} characters.")
+
+    # ── CHECK MESSAGE LIMIT FIRST ─────────────────────────────────────────────────
+    allowed, reason = UsageService.check_can_send_message(db, current_user.id)
+    if not allowed:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=reason)
 
     agent = db.query(Agent).filter(
         Agent.id == chat.agent_id,
@@ -73,6 +78,9 @@ async def run_agent(
     db.commit()
     db.refresh(ai_message)
 
+    # ── RECORD USAGE AFTER SUCCESS ────────────────────────────────────────────────
+    UsageService.record_message(db, current_user.id, agent_id=chat.agent_id)
+
     logger.info(f"Chat completed: agent={chat.agent_id} user={current_user.id} response_len={len(ai_response)}")
     return ai_message
 
@@ -93,6 +101,11 @@ async def stream_response(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Message cannot be empty.")
     if len(message) > MAX_MESSAGE_LENGTH:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Message too long. Max {MAX_MESSAGE_LENGTH} characters.")
+
+    # ── CHECK MESSAGE LIMIT FIRST ─────────────────────────────────────────────────
+    allowed, reason = UsageService.check_can_send_message(db, current_user.id)
+    if not allowed:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=reason)
 
     agent = db.query(Agent).filter(
         Agent.id == chat.agent_id,
@@ -153,6 +166,9 @@ async def stream_response(
                 save_db.commit()
                 save_db.refresh(ai_message)
                 message_id = ai_message.id
+                
+                # ── RECORD USAGE AFTER STREAMING COMPLETES ───────────────────────
+                UsageService.record_message(save_db, user_id, agent_id=agent_id)
             finally:
                 save_db.close()
 
