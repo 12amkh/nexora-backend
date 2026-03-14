@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Index
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from models.base import Base
+from database import Base
 
 class UsageMetric(Base):
     """

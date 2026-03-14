@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from models.base import Base
+from database import Base
 
 class User(Base):
     """User model with usage tracking relationship."""
