@@ -115,7 +115,7 @@ def register(user: UserRegister, db: Session = Depends(get_db)):
     new_user = User(
         name=user.name.strip(),
         email=normalized_email,
-        password=hash_password(user.password),
+        password_hash=hash_password(user.password),
     )
     db.add(new_user)
     db.commit()
@@ -138,7 +138,7 @@ def login(
 ):
     # get client IP for rate limiting
     # request.client.host gives the raw IP address
-    ip = request.client.host
+    ip = request.client.host if request.client else "unknown"
 
     # block if IP has too many recent failures
     check_rate_limit(ip)
@@ -152,7 +152,7 @@ def login(
     # IMPORTANT: always check both user existence AND password before failing
     # never reveal whether the email exists or the password was wrong separately
     # real life: a good bouncer says "you're not on the list" not "wrong password"
-    if not db_user or not verify_password(form_data.password, db_user.password):
+    if not db_user or not verify_password(form_data.password, db_user.password_hash):
         record_failed_attempt(ip)
         logger.warning(f"Failed login attempt for email: {email} from IP: {ip}")
         raise HTTPException(
