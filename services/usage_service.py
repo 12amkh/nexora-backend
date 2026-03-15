@@ -1,4 +1,5 @@
-from datetime import datetime, timedelta
+from calendar import monthrange
+from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from core.plan_limits import get_plan_limit, normalize_plan
@@ -27,20 +28,32 @@ class UsageService:
         """
         today = datetime.utcnow()
         signup_day = user.created_at.day
+        current_cycle_day = min(signup_day, monthrange(today.year, today.month)[1])
 
-        # If today's day >= signup day, cycle started this month
-        if today.day >= signup_day:
-            month_start = today.replace(day=signup_day, hour=0, minute=0, second=0, microsecond=0)
+        # Users created near month-end keep a stable monthly cycle even in shorter months.
+        if today.day >= current_cycle_day:
+            month_start = UsageService._build_cycle_datetime(today.year, today.month, signup_day)
         else:
-            # Cycle started last month
-            if today.month == 1:
-                month_start = datetime(today.year - 1, 12, signup_day)
-            else:
-                month_start = datetime(today.year, today.month - 1, signup_day)
-            month_start = month_start.replace(hour=0, minute=0, second=0, microsecond=0)
+            previous_year, previous_month = UsageService._shift_month(today.year, today.month, -1)
+            month_start = UsageService._build_cycle_datetime(previous_year, previous_month, signup_day)
 
-        month_end = month_start + timedelta(days=30)
+        next_year, next_month = UsageService._shift_month(month_start.year, month_start.month, 1)
+        month_end = UsageService._build_cycle_datetime(next_year, next_month, signup_day)
         return month_start, month_end
+
+    @staticmethod
+    def _build_cycle_datetime(year: int, month: int, preferred_day: int) -> datetime:
+        # Clamp the billing anchor day to the last valid day of the target month.
+        day = min(preferred_day, monthrange(year, month)[1])
+        return datetime(year, month, day, 0, 0, 0, 0)
+
+    @staticmethod
+    def _shift_month(year: int, month: int, delta: int) -> Tuple[int, int]:
+        # Shift by whole months without introducing external dependencies.
+        absolute_month = (year * 12 + (month - 1)) + delta
+        shifted_year = absolute_month // 12
+        shifted_month = absolute_month % 12 + 1
+        return shifted_year, shifted_month
 
     @staticmethod
     def get_current_month_usage(db: Session, user_id: int, metric_type: str) -> int:
