@@ -11,6 +11,7 @@ from models.schedule import Schedule
 from schemas.schedule import ScheduleCreate, ScheduleUpdate, ScheduleResponse, ScheduleRunResponse
 from utils.dependencies import get_current_user
 from tasks.agent_tasks import run_scheduled_agent
+from services.usage_service import normalize_plan
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,7 @@ PLAN_SCHEDULE_LIMITS = {
 
 
 def get_schedule_limit(plan: str) -> int:
-    return PLAN_SCHEDULE_LIMITS.get(plan, 0)  # default to free (0) if unknown plan
+    return PLAN_SCHEDULE_LIMITS.get(normalize_plan(plan), 0)  # default to free (0) if unknown plan
 
 
 # ── Create Schedule ───────────────────────────────────────────────────────────────
@@ -49,7 +50,8 @@ def create_schedule(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    limit = get_schedule_limit(current_user.plan)
+    normalized_plan = normalize_plan(current_user.plan)
+    limit = get_schedule_limit(normalized_plan)
 
     # free users hit a hard wall — clear upgrade message
     if limit == 0:
@@ -67,7 +69,7 @@ def create_schedule(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=(
                 f"You have reached the maximum number of schedules ({limit}) "
-                f"for your {current_user.plan} plan. Please upgrade to create more."
+                f"for your {normalized_plan} plan. Please upgrade to create more."
             ),
         )
 

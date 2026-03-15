@@ -7,6 +7,7 @@ from models.agent import Agent
 from models.schedule import Schedule
 from models.usage import UsageMetric
 from typing import Dict, List, Optional
+from services.usage_service import normalize_plan
 
 
 class AdminService:
@@ -128,14 +129,15 @@ class AdminService:
         Plans: "free", "starter", "pro", "business", "enterprise"
         """
         valid_plans = ["free", "starter", "pro", "business", "enterprise"]
-        if new_plan not in valid_plans:
+        normalized_plan = normalize_plan(new_plan)
+        if normalized_plan not in valid_plans:
             return False
 
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
             return False
 
-        user.plan = new_plan
+        user.plan = normalized_plan
         db.commit()
         return True
 

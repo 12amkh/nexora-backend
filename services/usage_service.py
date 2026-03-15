@@ -37,6 +37,11 @@ PLAN_LIMITS = {
 }
 
 
+def normalize_plan(plan: str | None) -> str:
+    normalized = (plan or "free").strip().lower()
+    return normalized if normalized in PLAN_LIMITS else "free"
+
+
 class UsageService:
     """
     Manages usage tracking and plan limit enforcement.
@@ -104,7 +109,7 @@ class UsageService:
         if not user:
             return {}
 
-        plan = user.plan or "free"
+        plan = normalize_plan(user.plan)
         limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
         month_start, month_end = UsageService.get_billing_month_range(user)
 
@@ -156,7 +161,7 @@ class UsageService:
         if not user:
             return False, "User not found"
 
-        plan = user.plan or "free"
+        plan = normalize_plan(user.plan)
         limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
         used = UsageService.get_current_month_usage(db, user_id, "message")
 
@@ -175,7 +180,7 @@ class UsageService:
         if not user:
             return False, "User not found"
 
-        plan = user.plan or "free"
+        plan = normalize_plan(user.plan)
         limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
 
         agent_count = (
@@ -199,7 +204,7 @@ class UsageService:
         if not user:
             return False, "User not found"
 
-        plan = user.plan or "free"
+        plan = normalize_plan(user.plan)
         limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
 
         schedule_count = (

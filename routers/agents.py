@@ -18,6 +18,7 @@ from schemas.agent import (
     AgentType,
 )
 from services.usage_service import UsageService
+from services.usage_service import normalize_plan
 from utils.dependencies import get_current_user
 
 logger = logging.getLogger(__name__)
@@ -42,7 +43,7 @@ PLAN_AGENT_LIMITS = {
 
 
 def get_agent_limit(plan: str) -> int:
-    return PLAN_AGENT_LIMITS.get(plan, 3)  # default to free if unknown plan
+    return PLAN_AGENT_LIMITS.get(normalize_plan(plan), 3)  # default to free if unknown plan
 
 
 # ── List Agent Types ──────────────────────────────────────────────────────────────
@@ -98,7 +99,8 @@ def create_agent(
         Agent.user_id == current_user.id
     ).count()
 
-    limit = get_agent_limit(current_user.plan)
+    normalized_plan = normalize_plan(current_user.plan)
+    limit = get_agent_limit(normalized_plan)
 
     if existing_count >= limit:
         logger.warning(
@@ -109,7 +111,7 @@ def create_agent(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=(
                 f"You have reached the maximum number of agents ({limit}) "
-                f"for your {current_user.plan} plan. "
+                f"for your {normalized_plan} plan. "
                 f"Please upgrade to create more agents."
             ),
         )
