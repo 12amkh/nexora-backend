@@ -161,6 +161,13 @@ def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    if not db_user.is_active:
+        logger.warning(f"Inactive user {db_user.id} attempted login from IP: {ip}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account is inactive. Please contact support.",
+        )
+
     # successful login — clear failed attempts and issue token
     clear_failed_attempts(ip)
 

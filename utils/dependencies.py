@@ -49,6 +49,10 @@ def get_current_user(
             logger.warning(f"Token valid but user {user_id} not found in DB — possibly deleted")
             raise credentials_exception
 
+        if not user.is_active:
+            logger.warning(f"Inactive user {user_id} attempted to use an authenticated route")
+            raise credentials_exception
+
         return user
 
     except HTTPException:

@@ -26,7 +26,7 @@ router = APIRouter(
 # business → 50 schedules ($149/month) — full automation platform
 # this is one of the strongest upgrade incentives — "set it and forget it"
 PLAN_SCHEDULE_LIMITS = {
-    "free":     1,
+    "free":     0,
     "starter":  3,
     "pro":      10,
     "business": 50,
@@ -236,6 +236,8 @@ def trigger_schedule(
         )
 
     task = run_scheduled_agent.delay(schedule_id)
+    from services.usage_service import UsageService
+    UsageService.record_schedule_run(db, current_user.id)
 
     logger.info(
         f"Schedule manually triggered: id={schedule_id} "

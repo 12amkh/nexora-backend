@@ -17,6 +17,7 @@ from schemas.agent import (
     AGENT_TYPE_DESCRIPTIONS,
     AgentType,
 )
+from services.usage_service import UsageService
 from utils.dependencies import get_current_user
 
 logger = logging.getLogger(__name__)
@@ -132,6 +133,7 @@ def create_agent(
         f"Agent created: '{new_agent.name}' type='{agent.agent_type}' "
         f"(id={new_agent.id}) by user {current_user.id}"
     )
+    UsageService.record_agent_created(db, current_user.id, new_agent.id)
     return new_agent
 
 

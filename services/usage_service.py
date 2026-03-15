@@ -2,10 +2,12 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from models.user import User
+from models.agent import Agent
+from models.schedule import Schedule
 from models.usage import UsageMetric
 from typing import Dict, Tuple
 
-# Plan limits: (monthly_messages, total_agents, monthly_schedules)
+# Plan limits: (monthly_messages, total_agents, total_schedules)
 PLAN_LIMITS = {
     "free": {
         "messages_per_month": 100,
@@ -107,10 +109,13 @@ class UsageService:
         month_start, month_end = UsageService.get_billing_month_range(user)
 
         # Count agents (total, not monthly reset)
-        agents_count = db.query(func.count(User.id)).filter(User.id == user_id).scalar()
+        agents_count = (
+            db.query(func.count(Agent.id))
+            .filter(Agent.user_id == user_id)
+            .scalar()
+        )
 
         # Count schedules (total, not monthly reset)
-        from models.schedule import Schedule
         schedules_count = (
             db.query(func.count(Schedule.id))
             .filter(Schedule.user_id == user_id)
@@ -124,16 +129,22 @@ class UsageService:
             "plan": plan,
             "messages_used": messages_count,
             "messages_limit": limits["messages_per_month"],
-            "messages_percent": int((messages_count / limits["messages_per_month"]) * 100),
+            "messages_percent": UsageService._percent(messages_count, limits["messages_per_month"]),
             "agents_used": agents_count,
             "agents_limit": limits["agents_total"],
-            "agents_percent": int((agents_count / limits["agents_total"]) * 100),
+            "agents_percent": UsageService._percent(agents_count, limits["agents_total"]),
             "schedules_used": schedules_count,
             "schedules_limit": limits["schedules_total"],
-            "schedules_percent": int((schedules_count / limits["schedules_total"]) * 100),
+            "schedules_percent": UsageService._percent(schedules_count, limits["schedules_total"]),
             "billing_month_start": month_start.isoformat(),
             "billing_month_end": month_end.isoformat(),
         }
+
+    @staticmethod
+    def _percent(used: int, limit: int) -> int:
+        if limit <= 0:
+            return 100 if used > 0 else 0
+        return int((used / limit) * 100)
 
     @staticmethod
     def check_can_send_message(db: Session, user_id: int) -> Tuple[bool, str]:
@@ -167,7 +178,6 @@ class UsageService:
         plan = user.plan or "free"
         limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
 
-        from models.agent import Agent
         agent_count = (
             db.query(func.count(Agent.id))
             .filter(Agent.user_id == user_id)
@@ -192,7 +202,6 @@ class UsageService:
         plan = user.plan or "free"
         limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
 
-        from models.schedule import Schedule
         schedule_count = (
             db.query(func.count(Schedule.id))
             .filter(Schedule.user_id == user_id)

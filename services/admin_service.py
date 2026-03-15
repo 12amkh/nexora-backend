@@ -204,15 +204,27 @@ class AdminService:
             .all()
         )
 
-        return [
-            {
-                "id": u.id,
-                "name": u.name,
-                "email": u.email,
-                "plan": u.plan,
-            }
-            for u in users
-        ]
+        results = []
+        for user in users:
+            agent_count = db.query(func.count(Agent.id)).filter(Agent.user_id == user.id).scalar()
+            schedule_count = db.query(func.count(Schedule.id)).filter(Schedule.user_id == user.id).scalar()
+
+            results.append(
+                {
+                    "id": user.id,
+                    "name": user.name,
+                    "email": user.email,
+                    "plan": user.plan,
+                    "is_active": user.is_active,
+                    "created_at": user.created_at.isoformat(),
+                    "agent_count": agent_count,
+                    "schedule_count": schedule_count,
+                    "paddle_customer_id": user.paddle_customer_id,
+                    "paddle_subscription_status": user.paddle_subscription_status,
+                }
+            )
+
+        return results
 
     @staticmethod
     def deactivate_user(db: Session, user_id: int) -> bool:
