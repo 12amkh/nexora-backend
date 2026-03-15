@@ -41,7 +41,13 @@ def build_scheduled_agent_config(agent_config: dict | None) -> dict:
 
 def is_rate_limit_error(exc: Exception) -> bool:
     text = str(exc).lower()
-    return "rate_limit_exceeded" in text or "rate limit" in text or exc.__class__.__name__ == "RateLimitError"
+    return (
+        "rate_limit_exceeded" in text
+        or "rate limit" in text
+        or "too many requests" in text
+        or "httpstatuserror" in exc.__class__.__name__.lower() and "429" in text
+        or exc.__class__.__name__ == "RateLimitError"
+    )
 
 
 # ── Run Agent Task ────────────────────────────────────────────────────────────────
