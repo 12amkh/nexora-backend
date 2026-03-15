@@ -104,6 +104,7 @@ def run_scheduled_agent(self, schedule_id: int):
             "status":      "success",
             "schedule_id": schedule_id,
             "agent_id":    schedule.agent_id,
+            "response":    ai_response,
             "response_len": len(ai_response),
         }
 
