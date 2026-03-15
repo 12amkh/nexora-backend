@@ -24,6 +24,22 @@ router = APIRouter(
 
 MAX_MESSAGE_LENGTH = 4000
 MAX_REPORT_TITLE_LENGTH = 120
+REPORT_TRIGGER_KEYWORDS = (
+    "report",
+    "analysis",
+    "analyze",
+    "research",
+    "brief",
+    "summary",
+    "summarize",
+    "market",
+    "trends",
+    "opportunities",
+    "competitor",
+    "startup idea",
+    "seo",
+    "sources",
+)
 
 
 def build_report_title(message: str) -> str:
@@ -35,7 +51,28 @@ def build_report_title(message: str) -> str:
     return f"{normalized[: MAX_REPORT_TITLE_LENGTH - 3].rstrip()}..."
 
 
+def should_save_agent_report(message: str, content: str) -> bool:
+    normalized_message = " ".join(message.lower().split())
+    normalized_content = content.strip()
+    normalized_content_lower = normalized_content.lower()
+
+    if not normalized_content or len(normalized_content) < 180:
+        return False
+
+    keyword_match = any(keyword in normalized_message for keyword in REPORT_TRIGGER_KEYWORDS)
+    structured_content = any(
+        signal in normalized_content_lower
+        for signal in ("\n#", "\n-", "\n*", "\n1.", "sources:", "summary:", "overview:", "key takeaways:")
+    )
+    paragraph_count = sum(1 for part in normalized_content.split("\n\n") if part.strip())
+
+    return keyword_match or structured_content or paragraph_count >= 3
+
+
 def save_agent_report(db: Session, agent_id: int, user_id: int, message: str, content: str) -> AgentReport | None:
+    if not should_save_agent_report(message, content):
+        return None
+
     try:
         report = AgentReport(
             agent_id=agent_id,
