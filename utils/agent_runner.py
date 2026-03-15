@@ -40,13 +40,18 @@ RESPONSE_LENGTH_INSTRUCTIONS = {
 PRIMARY_GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
 
+def read_env(name: str, default: str = "") -> str:
+    value = os.getenv(name, default)
+    return value.strip() if isinstance(value, str) else default
+
+
 def get_fallback_providers() -> list[dict]:
     providers = []
 
-    generic_base_url = os.getenv("FALLBACK_LLM_BASE_URL", "").rstrip("/")
-    generic_api_key = os.getenv("FALLBACK_LLM_API_KEY", "")
-    generic_model = os.getenv("FALLBACK_LLM_MODEL", "")
-    generic_name = os.getenv("FALLBACK_LLM_PROVIDER", "openai-compatible")
+    generic_base_url = read_env("FALLBACK_LLM_BASE_URL").rstrip("/")
+    generic_api_key = read_env("FALLBACK_LLM_API_KEY")
+    generic_model = read_env("FALLBACK_LLM_MODEL")
+    generic_name = read_env("FALLBACK_LLM_PROVIDER", "openai-compatible")
 
     if generic_base_url and generic_api_key and generic_model:
         providers.append(
@@ -58,8 +63,8 @@ def get_fallback_providers() -> list[dict]:
             }
         )
 
-    gemini_api_key = os.getenv("GEMINI_API_KEY", "")
-    gemini_model = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
+    gemini_api_key = read_env("GEMINI_API_KEY")
+    gemini_model = read_env("GEMINI_MODEL", "gemini-3-flash-preview")
     if gemini_api_key:
         providers.append(
             {
@@ -70,8 +75,8 @@ def get_fallback_providers() -> list[dict]:
             }
         )
 
-    openai_api_key = os.getenv("OPENAI_API_KEY", "")
-    openai_model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    openai_api_key = read_env("OPENAI_API_KEY")
+    openai_model = read_env("OPENAI_MODEL", "gpt-4o-mini")
     if openai_api_key:
         providers.append(
             {
