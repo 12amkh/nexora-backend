@@ -4,9 +4,7 @@ import logging
 import asyncio
 from celery_app import celery_app
 from database import SessionLocal
-from models.agent import Agent
-from models.conversation import Conversation
-from models.schedule import Schedule
+from models import Agent, Conversation, Schedule
 from utils.agent_runner import run_agent
 from sqlalchemy.sql import func
 
