@@ -76,6 +76,7 @@ class AgentConfig(BaseModel):
     focus_topics:        list[str]     = []   # topics the agent should stay focused on
     avoid_topics:        list[str]     = []   # topics the agent should refuse to discuss
     custom_knowledge:    str           = ""   # extra context injected into every prompt
+    max_history:         int           = 8    # cap conversation context to control cost
 
 
 # ── Agent Templates ───────────────────────────────────────────────────────────────

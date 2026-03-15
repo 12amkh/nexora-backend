@@ -38,6 +38,7 @@ RESPONSE_LENGTH_INSTRUCTIONS = {
 }
 
 PRIMARY_GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+SCHEDULE_GROQ_MODEL = os.getenv("GROQ_SCHEDULE_MODEL", PRIMARY_GROQ_MODEL)
 
 
 def read_env(name: str, default: str = "") -> str:
@@ -65,6 +66,7 @@ def get_fallback_providers() -> list[dict]:
 
     gemini_api_key = read_env("GEMINI_API_KEY")
     gemini_model = read_env("GEMINI_MODEL", "gemini-3-flash-preview")
+    gemini_schedule_model = read_env("GEMINI_SCHEDULE_MODEL", gemini_model)
     if gemini_api_key:
         providers.append(
             {
@@ -72,11 +74,13 @@ def get_fallback_providers() -> list[dict]:
                 "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
                 "api_key": gemini_api_key,
                 "model": gemini_model,
+                "schedule_model": gemini_schedule_model,
             }
         )
 
     openai_api_key = read_env("OPENAI_API_KEY")
     openai_model = read_env("OPENAI_MODEL", "gpt-4o-mini")
+    openai_schedule_model = read_env("OPENAI_SCHEDULE_MODEL", openai_model)
     if openai_api_key:
         providers.append(
             {
@@ -84,6 +88,7 @@ def get_fallback_providers() -> list[dict]:
                 "base_url": "https://api.openai.com/v1",
                 "api_key": openai_api_key,
                 "model": openai_model,
+                "schedule_model": openai_schedule_model,
             }
         )
 
@@ -107,6 +112,17 @@ def build_llm(config: dict) -> ChatGroq:
         model=PRIMARY_GROQ_MODEL,
         temperature=temperature,
         api_key=os.getenv("GROQ_API_KEY"),
+    )
+
+
+def build_groq_llm(config: dict, mode: str) -> ChatGroq:
+    tone = config.get("tone", "professional")
+    temperature = TONE_TEMPERATURE.get(tone, 0.5)
+    model = SCHEDULE_GROQ_MODEL if mode == "scheduled" else PRIMARY_GROQ_MODEL
+    return ChatGroq(
+        model=model,
+        temperature=temperature,
+        api_key=read_env("GROQ_API_KEY"),
     )
 
 
@@ -177,6 +193,20 @@ def format_history(conversation_history: list) -> list:
     return formatted
 
 
+def get_max_history(config: dict, mode: str) -> int:
+    configured = config.get("max_history")
+    if isinstance(configured, int) and configured >= 0:
+        return configured
+    return 4 if mode == "scheduled" else 8
+
+
+def trim_history(conversation_history: list, config: dict, mode: str) -> list:
+    max_history = get_max_history(config, mode)
+    if max_history <= 0:
+        return []
+    return conversation_history[-max_history:]
+
+
 # casual phrases that don't need web search — respond naturally from LLM knowledge
 CASUAL_PHRASES = {
     "hi", "hello", "hey", "hiya", "howdy",
@@ -204,7 +234,12 @@ def is_casual_message(message: str) -> bool:
 
 def is_rate_limit_error(exc: Exception) -> bool:
     text = str(exc).lower()
-    return "rate_limit_exceeded" in text or "rate limit" in text or exc.__class__.__name__ == "RateLimitError"
+    return (
+        "rate_limit_exceeded" in text
+        or "rate limit" in text
+        or "too many requests" in text
+        or exc.__class__.__name__ == "RateLimitError"
+    )
 
 
 def has_fallback_llm() -> bool:
@@ -222,6 +257,26 @@ def build_fallback_messages(system_prompt: str, history: list, user_message: str
 
     messages.append({"role": "user", "content": user_message})
     return messages
+
+
+def get_provider_sequence(mode: str) -> list[str]:
+    # Scheduled work is cheaper-first; interactive chat stays quality-first.
+    if mode == "scheduled":
+        return ["gemini", "groq", "openai", "openai-compatible"]
+    return ["groq", "gemini", "openai", "openai-compatible"]
+
+
+def get_openai_compatible_candidates(mode: str) -> list[dict]:
+    candidates = []
+    provider_order = {name: i for i, name in enumerate(get_provider_sequence(mode))}
+
+    for provider in get_fallback_providers():
+        provider = provider.copy()
+        provider["model"] = provider.get("schedule_model", provider["model"]) if mode == "scheduled" else provider["model"]
+        candidates.append(provider)
+
+    candidates.sort(key=lambda provider: provider_order.get(provider["name"], 999))
+    return candidates
 
 
 def extract_fallback_text(data: dict) -> str:
@@ -252,8 +307,8 @@ def extract_fallback_text(data: dict) -> str:
     raise ValueError(f"Unsupported fallback LLM response format: {content!r}")
 
 
-async def run_fallback_llm(system_prompt: str, history: list, user_message: str, config: dict) -> str:
-    providers = get_fallback_providers()
+async def run_fallback_llm(system_prompt: str, history: list, user_message: str, config: dict, mode: str) -> str:
+    providers = get_openai_compatible_candidates(mode)
     if not providers:
         raise RuntimeError("Fallback LLM is not configured.")
 
@@ -303,20 +358,27 @@ async def run_agent(
     user_message: str,
     conversation_history: list,
     agent_config: dict = None,
+    mode: str = "interactive",
 ) -> str:
     config        = agent_config or {}
-    llm           = build_llm(config)
+    llm           = build_groq_llm(config, mode)
     # skip web search for casual messages even if agent has it enabled
     # real life: you don't google "hi" — you just respond naturally
     tools         = [] if is_casual_message(user_message) else build_tools(config)
     system_prompt = build_system_prompt(config)
-    history       = format_history(conversation_history)
+    history       = format_history(trim_history(conversation_history, config, mode))
 
     all_messages = [SystemMessage(content=system_prompt)] + history + [HumanMessage(content=user_message)]
 
     logger.info(f"run_agent: type={config.get('agent_type','custom')} tone={config.get('tone','professional')} web_search={bool(tools)}")
 
     try:
+        if mode == "scheduled" and not tools and has_fallback_llm():
+            # Cheapest path for automations: try low-cost OpenAI-compatible providers first.
+            response = await run_fallback_llm(system_prompt, history, user_message, config, mode)
+            logger.info(f"run_agent: scheduled fallback-first response generated ({len(response)} chars)")
+            return response
+
         agent  = create_react_agent(model=llm, tools=tools)
         result = await agent.ainvoke({"messages": all_messages})
         response = result["messages"][-1].content
@@ -327,7 +389,7 @@ async def run_agent(
             raise
 
         logger.warning("run_agent: Groq rate-limited, attempting configured fallback providers", exc_info=True)
-        response = await run_fallback_llm(system_prompt, history, user_message, config)
+        response = await run_fallback_llm(system_prompt, history, user_message, config, mode)
         logger.info(f"run_agent: fallback response generated ({len(response)} chars)")
         return response
 
@@ -337,13 +399,14 @@ async def stream_agent(
     user_message: str,
     conversation_history: list,
     agent_config: dict = None,
+    mode: str = "interactive",
 ) -> AsyncGenerator[str, None]:
     config        = agent_config or {}
-    llm           = build_llm(config)
+    llm           = build_groq_llm(config, mode)
     # skip web search for casual messages — respond instantly without searching
     tools         = [] if is_casual_message(user_message) else build_tools(config)
     system_prompt = build_system_prompt(config)
-    history       = format_history(conversation_history)
+    history       = format_history(trim_history(conversation_history, config, mode))
 
     all_messages = [SystemMessage(content=system_prompt)] + history + [HumanMessage(content=user_message)]
 
@@ -368,7 +431,7 @@ async def stream_agent(
             raise
 
         logger.warning("stream_agent: Groq rate-limited, attempting configured fallback providers", exc_info=True)
-        fallback_text = await run_fallback_llm(system_prompt, history, user_message, config)
+        fallback_text = await run_fallback_llm(system_prompt, history, user_message, config, mode)
         chunk_size = 12
         for i in range(0, len(fallback_text), chunk_size):
             yield fallback_text[i:i + chunk_size]
