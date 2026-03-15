@@ -1,45 +1,12 @@
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+from core.plan_limits import get_plan_limit, normalize_plan
 from models.user import User
 from models.agent import Agent
 from models.schedule import Schedule
 from models.usage import UsageMetric
 from typing import Dict, Tuple
-
-# Plan limits: (monthly_messages, total_agents, total_schedules)
-PLAN_LIMITS = {
-    "free": {
-        "messages_per_month": 100,
-        "agents_total": 3,
-        "schedules_total": 0,
-    },
-    "starter": {
-        "messages_per_month": 5000,
-        "agents_total": 5,
-        "schedules_total": 3,
-    },
-    "pro": {
-        "messages_per_month": 50000,
-        "agents_total": 20,
-        "schedules_total": 10,
-    },
-    "business": {
-        "messages_per_month": 500000,
-        "agents_total": 100,
-        "schedules_total": 50,
-    },
-    "enterprise": {
-        "messages_per_month": 999999999,
-        "agents_total": 999999999,
-        "schedules_total": 999999999,
-    },
-}
-
-
-def normalize_plan(plan: str | None) -> str:
-    normalized = (plan or "free").strip().lower()
-    return normalized if normalized in PLAN_LIMITS else "free"
 
 
 class UsageService:
@@ -110,7 +77,6 @@ class UsageService:
             return {}
 
         plan = normalize_plan(user.plan)
-        limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
         month_start, month_end = UsageService.get_billing_month_range(user)
 
         # Count agents (total, not monthly reset)
@@ -133,20 +99,22 @@ class UsageService:
         return {
             "plan": plan,
             "messages_used": messages_count,
-            "messages_limit": limits["messages_per_month"],
-            "messages_percent": UsageService._percent(messages_count, limits["messages_per_month"]),
+            "messages_limit": get_plan_limit(plan, "max_messages_per_month"),
+            "messages_percent": UsageService._percent(messages_count, get_plan_limit(plan, "max_messages_per_month")),
             "agents_used": agents_count,
-            "agents_limit": limits["agents_total"],
-            "agents_percent": UsageService._percent(agents_count, limits["agents_total"]),
+            "agents_limit": get_plan_limit(plan, "max_agents"),
+            "agents_percent": UsageService._percent(agents_count, get_plan_limit(plan, "max_agents")),
             "schedules_used": schedules_count,
-            "schedules_limit": limits["schedules_total"],
-            "schedules_percent": UsageService._percent(schedules_count, limits["schedules_total"]),
+            "schedules_limit": get_plan_limit(plan, "max_schedules"),
+            "schedules_percent": UsageService._percent(schedules_count, get_plan_limit(plan, "max_schedules")),
             "billing_month_start": month_start.isoformat(),
             "billing_month_end": month_end.isoformat(),
         }
 
     @staticmethod
-    def _percent(used: int, limit: int) -> int:
+    def _percent(used: int, limit: int | None) -> int:
+        if limit is None:
+            return 0
         if limit <= 0:
             return 100 if used > 0 else 0
         return int((used / limit) * 100)
@@ -162,11 +130,11 @@ class UsageService:
             return False, "User not found"
 
         plan = normalize_plan(user.plan)
-        limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
         used = UsageService.get_current_month_usage(db, user_id, "message")
+        message_limit = get_plan_limit(plan, "max_messages_per_month")
 
-        if used >= limits["messages_per_month"]:
-            return False, f"Message limit reached ({used}/{limits['messages_per_month']})"
+        if message_limit is not None and used >= message_limit:
+            return False, f"Message limit reached ({used}/{message_limit})"
 
         return True, "OK"
 
@@ -181,7 +149,6 @@ class UsageService:
             return False, "User not found"
 
         plan = normalize_plan(user.plan)
-        limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
 
         agent_count = (
             db.query(func.count(Agent.id))
@@ -189,8 +156,9 @@ class UsageService:
             .scalar()
         )
 
-        if agent_count >= limits["agents_total"]:
-            return False, f"Agent limit reached ({agent_count}/{limits['agents_total']})"
+        agent_limit = get_plan_limit(plan, "max_agents")
+        if agent_limit is not None and agent_count >= agent_limit:
+            return False, f"Agent limit reached ({agent_count}/{agent_limit})"
 
         return True, "OK"
 
@@ -205,7 +173,6 @@ class UsageService:
             return False, "User not found"
 
         plan = normalize_plan(user.plan)
-        limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
 
         schedule_count = (
             db.query(func.count(Schedule.id))
@@ -213,8 +180,9 @@ class UsageService:
             .scalar()
         )
 
-        if schedule_count >= limits["schedules_total"]:
-            return False, f"Schedule limit reached ({schedule_count}/{limits['schedules_total']})"
+        schedule_limit = get_plan_limit(plan, "max_schedules")
+        if schedule_limit is not None and schedule_count >= schedule_limit:
+            return False, f"Schedule limit reached ({schedule_count}/{schedule_limit})"
 
         return True, "OK"
 

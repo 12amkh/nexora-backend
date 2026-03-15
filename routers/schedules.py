@@ -4,6 +4,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List
+from core.plan_limits import get_plan_limit, normalize_plan
 from database import get_db
 from models.user import User
 from models.agent import Agent
@@ -11,7 +12,6 @@ from models.schedule import Schedule
 from schemas.schedule import ScheduleCreate, ScheduleUpdate, ScheduleResponse, ScheduleRunResponse
 from utils.dependencies import get_current_user
 from tasks.agent_tasks import run_scheduled_agent
-from services.usage_service import normalize_plan
 
 logger = logging.getLogger(__name__)
 
@@ -19,23 +19,6 @@ router = APIRouter(
     prefix="/schedules",
     tags=["Schedules"]
 )
-
-# ── Plan Schedule Limits ──────────────────────────────────────────────────────────
-# free     → 0  schedules ($0/month)   — scheduling is a paid feature
-# starter  → 3  schedules ($19/month)  — light automation
-# pro      → 10 schedules ($49/month)  — serious automation
-# business → 50 schedules ($149/month) — full automation platform
-# this is one of the strongest upgrade incentives — "set it and forget it"
-PLAN_SCHEDULE_LIMITS = {
-    "free":     0,
-    "starter":  3,
-    "pro":      10,
-    "business": 50,
-}
-
-
-def get_schedule_limit(plan: str) -> int:
-    return PLAN_SCHEDULE_LIMITS.get(normalize_plan(plan), 0)  # default to free (0) if unknown plan
 
 
 # ── Create Schedule ───────────────────────────────────────────────────────────────
@@ -51,7 +34,7 @@ def create_schedule(
     db: Session = Depends(get_db),
 ):
     normalized_plan = normalize_plan(current_user.plan)
-    limit = get_schedule_limit(normalized_plan)
+    limit = get_plan_limit(normalized_plan, "max_schedules")
 
     # free users hit a hard wall — clear upgrade message
     if limit == 0:
@@ -64,7 +47,7 @@ def create_schedule(
         )
 
     existing_count = db.query(Schedule).filter(Schedule.user_id == current_user.id).count()
-    if existing_count >= limit:
+    if limit is not None and existing_count >= limit:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=(

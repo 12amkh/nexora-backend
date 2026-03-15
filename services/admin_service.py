@@ -7,7 +7,7 @@ from models.agent import Agent
 from models.schedule import Schedule
 from models.usage import UsageMetric
 from typing import Dict, List, Optional
-from services.usage_service import normalize_plan
+from core.plan_limits import normalize_plan
 
 
 class AdminService:

@@ -4,6 +4,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List
+from core.plan_limits import get_plan_limit, normalize_plan
 from database import get_db
 from models.user import User
 from models.agent import Agent
@@ -18,7 +19,6 @@ from schemas.agent import (
     AgentType,
 )
 from services.usage_service import UsageService
-from services.usage_service import normalize_plan
 from utils.dependencies import get_current_user
 
 logger = logging.getLogger(__name__)
@@ -27,23 +27,6 @@ router = APIRouter(
     prefix="/agents",
     tags=["Agents"]
 )
-
-# ── Plan Limits ───────────────────────────────────────────────────────────────────
-# free     → 3 agents   ($0/month)   — hook them in
-# starter  → 5 agents   ($19/month)  — entry paid tier
-# pro      → 20 agents  ($49/month)  — main revenue tier
-# business → 100 agents ($149/month) — teams and power users
-# when Stripe is added, current_user.plan updates automatically on payment
-PLAN_AGENT_LIMITS = {
-    "free":     3,
-    "starter":  5,
-    "pro":      20,
-    "business": 100,
-}
-
-
-def get_agent_limit(plan: str) -> int:
-    return PLAN_AGENT_LIMITS.get(normalize_plan(plan), 3)  # default to free if unknown plan
 
 
 # ── List Agent Types ──────────────────────────────────────────────────────────────
@@ -100,9 +83,9 @@ def create_agent(
     ).count()
 
     normalized_plan = normalize_plan(current_user.plan)
-    limit = get_agent_limit(normalized_plan)
+    limit = get_plan_limit(normalized_plan, "max_agents")
 
-    if existing_count >= limit:
+    if limit is not None and existing_count >= limit:
         logger.warning(
             f"User {current_user.id} hit agent limit "
             f"({existing_count}/{limit}) on plan '{current_user.plan}'"
