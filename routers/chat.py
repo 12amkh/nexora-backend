@@ -7,6 +7,7 @@ from typing import List
 from database import get_db
 from models.user import User
 from models.agent import Agent
+from models.agent_report import AgentReport
 from models.conversation import Conversation
 from schemas.chat import ChatRequest, ChatResponse
 from utils.dependencies import get_current_user
@@ -22,6 +23,34 @@ router = APIRouter(
 )
 
 MAX_MESSAGE_LENGTH = 4000
+MAX_REPORT_TITLE_LENGTH = 120
+
+
+def build_report_title(message: str) -> str:
+    normalized = " ".join(message.split()).strip()
+    if not normalized:
+        return "Untitled report"
+    if len(normalized) <= MAX_REPORT_TITLE_LENGTH:
+        return normalized
+    return f"{normalized[: MAX_REPORT_TITLE_LENGTH - 3].rstrip()}..."
+
+
+def save_agent_report(db: Session, agent_id: int, user_id: int, message: str, content: str) -> AgentReport | None:
+    try:
+        report = AgentReport(
+            agent_id=agent_id,
+            user_id=user_id,
+            title=build_report_title(message),
+            content=content,
+        )
+        db.add(report)
+        db.commit()
+        db.refresh(report)
+        return report
+    except Exception as exc:
+        db.rollback()
+        logger.error(f"Failed to save agent report: agent={agent_id} user={user_id}: {exc}", exc_info=True)
+        return None
 
 
 # ── Standard Response ─────────────────────────────────────────────────────────────
@@ -77,6 +106,7 @@ async def run_agent(
     db.add(ai_message)
     db.commit()
     db.refresh(ai_message)
+    save_agent_report(db, chat.agent_id, current_user.id, message, ai_response)
 
     # ── RECORD USAGE AFTER SUCCESS ────────────────────────────────────────────────
     UsageService.record_message(db, current_user.id, agent_id=chat.agent_id)
@@ -166,6 +196,7 @@ async def stream_response(
                 save_db.commit()
                 save_db.refresh(ai_message)
                 message_id = ai_message.id
+                save_agent_report(save_db, agent_id, user_id, message, complete_response)
                 
                 # ── RECORD USAGE AFTER STREAMING COMPLETES ───────────────────────
                 UsageService.record_message(save_db, user_id, agent_id=agent_id)

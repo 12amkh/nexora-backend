@@ -27,6 +27,7 @@ class User(Base):
     agents = relationship("Agent", back_populates="user", cascade="all, delete-orphan")
     schedules = relationship("Schedule", back_populates="user", cascade="all, delete-orphan")
     usage_metrics = relationship("UsageMetric", back_populates="user", cascade="all, delete-orphan")
+    agent_reports = relationship("AgentReport", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email}, plan={self.plan}, theme={self.theme})>"

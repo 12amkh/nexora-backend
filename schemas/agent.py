@@ -333,6 +333,17 @@ class AgentResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class AgentReportResponse(BaseModel):
+    id: int
+    agent_id: int
+    user_id: int
+    title: str
+    content: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class AgentTemplateResponse(BaseModel):
     """Returned when user requests a template for a given agent type."""
     agent_type:  str

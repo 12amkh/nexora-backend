@@ -15,6 +15,7 @@ from database import engine, Base, check_db_connection
 # import ALL models so SQLAlchemy registers them before create_all()
 from models.user import User
 from models.agent import Agent
+from models.agent_report import AgentReport
 from models.conversation import Conversation
 from models.schedule import Schedule
 from routers import usage_router

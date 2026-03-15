@@ -8,9 +8,11 @@ from core.plan_limits import get_plan_limit, normalize_plan
 from database import get_db
 from models.user import User
 from models.agent import Agent
+from models.agent_report import AgentReport
 from models.conversation import Conversation
 from schemas.agent import (
     AgentCreate,
+    AgentReportResponse,
     AgentUpdate,
     AgentResponse,
     AgentTemplateResponse,
@@ -140,6 +142,37 @@ def list_agents(
 
     logger.info(f"User {current_user.id} listed agents (skip={skip}, limit={limit}, returned={len(agents)})")
     return agents
+
+
+# ── Get Agent Reports ─────────────────────────────────────────────────────────────
+@router.get(
+    "/{agent_id}/reports",
+    response_model=List[AgentReportResponse],
+    summary="List saved reports for an agent",
+)
+def list_agent_reports(
+    agent_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    agent = db.query(Agent).filter(
+        Agent.id == agent_id,
+        Agent.user_id == current_user.id,
+    ).first()
+
+    if not agent:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Agent with id {agent_id} not found.",
+        )
+
+    reports = db.query(AgentReport).filter(
+        AgentReport.agent_id == agent_id,
+        AgentReport.user_id == current_user.id,
+    ).order_by(AgentReport.created_at.desc(), AgentReport.id.desc()).all()
+
+    logger.info(f"Reports fetched: agent={agent_id} user={current_user.id} returned={len(reports)}")
+    return reports
 
 
 # ── Get One Agent ─────────────────────────────────────────────────────────────────
