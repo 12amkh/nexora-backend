@@ -2,6 +2,7 @@
 
 import logging
 import asyncio
+from copy import deepcopy
 from celery_app import celery_app
 from database import SessionLocal
 from models import Agent, Conversation, Schedule
@@ -9,6 +10,38 @@ from utils.agent_runner import run_agent
 from sqlalchemy.sql import func
 
 logger = logging.getLogger(__name__)
+
+
+def build_scheduled_agent_config(agent_config: dict | None) -> dict:
+    """
+    Scheduled runs should behave more like brief digests than open-ended chat.
+    We keep them concise by default to reduce token usage and make automations
+    feel more useful in the product.
+    """
+    config = deepcopy(agent_config or {})
+    existing_instructions = config.get("instructions", "").strip()
+    scheduled_instruction = (
+        "This is an automated scheduled run. Respond with a concise, scannable update. "
+        "Prefer short summaries and bullet points where helpful. "
+        "Only go long if the user's task explicitly asks for detailed output."
+    )
+
+    config["instructions"] = (
+        f"{existing_instructions}\n\n{scheduled_instruction}"
+        if existing_instructions
+        else scheduled_instruction
+    )
+
+    response_length = config.get("response_length")
+    if response_length not in {"short", "medium"}:
+        config["response_length"] = "short"
+
+    return config
+
+
+def is_rate_limit_error(exc: Exception) -> bool:
+    text = str(exc).lower()
+    return "rate_limit_exceeded" in text or "rate limit" in text or exc.__class__.__name__ == "RateLimitError"
 
 
 # ── Run Agent Task ────────────────────────────────────────────────────────────────
@@ -76,7 +109,7 @@ def run_scheduled_agent(self, schedule_id: int):
             run_agent(
                 user_message=schedule.task_message,
                 conversation_history=conversation_history,
-                agent_config=agent.config,
+                agent_config=build_scheduled_agent_config(agent.config),
             )
         )
 
@@ -120,6 +153,13 @@ def run_scheduled_agent(self, schedule_id: int):
                 db.commit()
         except Exception:
             pass
+
+        if is_rate_limit_error(e):
+            logger.warning(f"Schedule {schedule_id} hit AI rate limits; skipping retry")
+            return {
+                "status": "failed",
+                "error": "AI quota reached. Please try again later or reduce scheduled response size.",
+            }
 
         # retry the task automatically — self.retry() raises a special exception
         # that tells Celery to re-queue this task after default_retry_delay seconds
