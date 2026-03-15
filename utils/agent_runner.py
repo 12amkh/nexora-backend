@@ -219,6 +219,34 @@ def build_fallback_messages(system_prompt: str, history: list, user_message: str
     return messages
 
 
+def extract_fallback_text(data: dict) -> str:
+    choices = data.get("choices") or []
+    if not choices:
+        raise ValueError("Fallback LLM response did not include choices.")
+
+    message = choices[0].get("message") or {}
+    content = message.get("content")
+
+    if isinstance(content, str):
+        return content
+
+    if isinstance(content, list):
+        parts = []
+        for item in content:
+            if isinstance(item, str):
+                parts.append(item)
+            elif isinstance(item, dict):
+                if isinstance(item.get("text"), str):
+                    parts.append(item["text"])
+                elif item.get("type") == "text" and isinstance(item.get("content"), str):
+                    parts.append(item["content"])
+        text = "".join(parts).strip()
+        if text:
+            return text
+
+    raise ValueError(f"Unsupported fallback LLM response format: {content!r}")
+
+
 async def run_fallback_llm(system_prompt: str, history: list, user_message: str, config: dict) -> str:
     providers = get_fallback_providers()
     if not providers:
@@ -250,8 +278,9 @@ async def run_fallback_llm(system_prompt: str, history: list, user_message: str,
                 response.raise_for_status()
                 data = response.json()
 
+            text = extract_fallback_text(data)
             logger.warning(f"run_agent: using fallback provider {provider['name']}")
-            return data["choices"][0]["message"]["content"]
+            return text
         except Exception as exc:
             last_error = exc
             logger.warning(
