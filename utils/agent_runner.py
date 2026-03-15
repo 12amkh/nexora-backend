@@ -4,6 +4,7 @@ import os
 import ssl
 import logging
 import certifi
+import httpx
 from typing import AsyncGenerator
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
@@ -36,12 +37,69 @@ RESPONSE_LENGTH_INSTRUCTIONS = {
     "detailed": "Provide thorough, comprehensive responses with supporting details.",
 }
 
+PRIMARY_GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+
+
+def get_fallback_providers() -> list[dict]:
+    providers = []
+
+    generic_base_url = os.getenv("FALLBACK_LLM_BASE_URL", "").rstrip("/")
+    generic_api_key = os.getenv("FALLBACK_LLM_API_KEY", "")
+    generic_model = os.getenv("FALLBACK_LLM_MODEL", "")
+    generic_name = os.getenv("FALLBACK_LLM_PROVIDER", "openai-compatible")
+
+    if generic_base_url and generic_api_key and generic_model:
+        providers.append(
+            {
+                "name": generic_name,
+                "base_url": generic_base_url,
+                "api_key": generic_api_key,
+                "model": generic_model,
+            }
+        )
+
+    gemini_api_key = os.getenv("GEMINI_API_KEY", "")
+    gemini_model = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
+    if gemini_api_key:
+        providers.append(
+            {
+                "name": "gemini",
+                "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+                "api_key": gemini_api_key,
+                "model": gemini_model,
+            }
+        )
+
+    openai_api_key = os.getenv("OPENAI_API_KEY", "")
+    openai_model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    if openai_api_key:
+        providers.append(
+            {
+                "name": "openai",
+                "base_url": "https://api.openai.com/v1",
+                "api_key": openai_api_key,
+                "model": openai_model,
+            }
+        )
+
+    # Deduplicate providers that point to the same backend/model combo.
+    seen = set()
+    unique_providers = []
+    for provider in providers:
+        key = (provider["name"], provider["base_url"], provider["model"])
+        if key in seen:
+            continue
+        seen.add(key)
+        unique_providers.append(provider)
+
+    return unique_providers
+
 
 def build_llm(config: dict) -> ChatGroq:
     tone        = config.get("tone", "professional")
     temperature = TONE_TEMPERATURE.get(tone, 0.5)
     return ChatGroq(
-        model="llama-3.3-70b-versatile",
+        model=PRIMARY_GROQ_MODEL,
         temperature=temperature,
         api_key=os.getenv("GROQ_API_KEY"),
     )
@@ -139,6 +197,73 @@ def is_casual_message(message: str) -> bool:
     return False
 
 
+def is_rate_limit_error(exc: Exception) -> bool:
+    text = str(exc).lower()
+    return "rate_limit_exceeded" in text or "rate limit" in text or exc.__class__.__name__ == "RateLimitError"
+
+
+def has_fallback_llm() -> bool:
+    return len(get_fallback_providers()) > 0
+
+
+def build_fallback_messages(system_prompt: str, history: list, user_message: str) -> list[dict]:
+    messages = [{"role": "system", "content": system_prompt}]
+
+    for entry in history:
+        if isinstance(entry, HumanMessage):
+            messages.append({"role": "user", "content": entry.content})
+        elif isinstance(entry, AIMessage):
+            messages.append({"role": "assistant", "content": entry.content})
+
+    messages.append({"role": "user", "content": user_message})
+    return messages
+
+
+async def run_fallback_llm(system_prompt: str, history: list, user_message: str, config: dict) -> str:
+    providers = get_fallback_providers()
+    if not providers:
+        raise RuntimeError("Fallback LLM is not configured.")
+
+    tone = config.get("tone", "professional")
+    temperature = TONE_TEMPERATURE.get(tone, 0.5)
+    last_error = None
+
+    for provider in providers:
+        payload = {
+            "model": provider["model"],
+            "messages": build_fallback_messages(system_prompt, history, user_message),
+            "temperature": temperature,
+        }
+
+        headers = {
+            "Authorization": f"Bearer {provider['api_key']}",
+            "Content-Type": "application/json",
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                response = await client.post(
+                    f"{provider['base_url']}/chat/completions",
+                    headers=headers,
+                    json=payload,
+                )
+                response.raise_for_status()
+                data = response.json()
+
+            logger.warning(f"run_agent: using fallback provider {provider['name']}")
+            return data["choices"][0]["message"]["content"]
+        except Exception as exc:
+            last_error = exc
+            logger.warning(
+                f"run_agent: fallback provider {provider['name']} failed, trying next provider",
+                exc_info=True,
+            )
+
+    if last_error:
+        raise last_error
+    raise RuntimeError("All fallback providers failed.")
+
+
 # ── Standard (Non-Streaming) Agent ───────────────────────────────────────────────
 async def run_agent(
     user_message: str,
@@ -157,12 +282,20 @@ async def run_agent(
 
     logger.info(f"run_agent: type={config.get('agent_type','custom')} tone={config.get('tone','professional')} web_search={bool(tools)}")
 
-    agent  = create_react_agent(model=llm, tools=tools)
-    result = await agent.ainvoke({"messages": all_messages})
+    try:
+        agent  = create_react_agent(model=llm, tools=tools)
+        result = await agent.ainvoke({"messages": all_messages})
+        response = result["messages"][-1].content
+        logger.info(f"run_agent: response generated ({len(response)} chars)")
+        return response
+    except Exception as exc:
+        if not is_rate_limit_error(exc) or not has_fallback_llm():
+            raise
 
-    response = result["messages"][-1].content
-    logger.info(f"run_agent: response generated ({len(response)} chars)")
-    return response
+        logger.warning("run_agent: Groq rate-limited, attempting configured fallback providers", exc_info=True)
+        response = await run_fallback_llm(system_prompt, history, user_message, config)
+        logger.info(f"run_agent: fallback response generated ({len(response)} chars)")
+        return response
 
 
 # ── Streaming Agent ───────────────────────────────────────────────────────────────
@@ -182,18 +315,28 @@ async def stream_agent(
 
     logger.info(f"stream_agent: type={config.get('agent_type','custom')} web_search={bool(tools)}")
 
-    if tools:
-        agent    = create_react_agent(model=llm, tools=tools)
-        result   = await agent.ainvoke({"messages": all_messages})
-        full_text = result["messages"][-1].content
+    try:
+        if tools:
+            agent    = create_react_agent(model=llm, tools=tools)
+            result   = await agent.ainvoke({"messages": all_messages})
+            full_text = result["messages"][-1].content
 
-        chunk_size = 3
-        for i in range(0, len(full_text), chunk_size):
-            yield full_text[i:i + chunk_size]
+            chunk_size = 3
+            for i in range(0, len(full_text), chunk_size):
+                yield full_text[i:i + chunk_size]
 
-    else:
-        async for chunk in llm.astream(all_messages):
-            if chunk.content:
-                yield chunk.content
+        else:
+            async for chunk in llm.astream(all_messages):
+                if chunk.content:
+                    yield chunk.content
+    except Exception as exc:
+        if not is_rate_limit_error(exc) or not has_fallback_llm():
+            raise
+
+        logger.warning("stream_agent: Groq rate-limited, attempting configured fallback providers", exc_info=True)
+        fallback_text = await run_fallback_llm(system_prompt, history, user_message, config)
+        chunk_size = 12
+        for i in range(0, len(fallback_text), chunk_size):
+            yield fallback_text[i:i + chunk_size]
 
     logger.info("stream_agent: stream complete")
