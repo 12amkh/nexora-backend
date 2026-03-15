@@ -264,9 +264,38 @@ def get_task_status(
     from celery.result import AsyncResult
 
     result = AsyncResult(task_id, app=celery_app)
+    payload = result.result if result.ready() or result.status == "RETRY" else None
+
+    if isinstance(payload, dict):
+        inner_status = str(payload.get("status", "")).upper()
+        if inner_status in {"FAILED", "FAILURE"}:
+            return {
+                "task_id": task_id,
+                "status": "FAILURE",
+                "result": payload.get("error") or payload,
+            }
+        if inner_status == "SUCCESS":
+            return {
+                "task_id": task_id,
+                "status": "SUCCESS",
+                "result": payload,
+            }
+        if inner_status == "SKIPPED":
+            return {
+                "task_id": task_id,
+                "status": "FAILURE",
+                "result": payload.get("reason") or "Task was skipped.",
+            }
+
+    if result.status == "RETRY":
+        return {
+            "task_id": task_id,
+            "status": "RETRY",
+            "result": str(result.result) if result.result else "Task is being retried.",
+        }
 
     return {
         "task_id": task_id,
         "status":  result.status,
-        "result":  result.result if result.ready() else None,
+        "result":  payload,
     }
