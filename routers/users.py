@@ -8,7 +8,7 @@ from database import get_db
 from models.user import User
 from models.agent import Agent
 from models.conversation import Conversation
-from schemas.user import UserResponse
+from schemas.user import UserResponse, UserThemeUpdate
 from utils.dependencies import get_current_user
 
 logger = logging.getLogger(__name__)
@@ -69,6 +69,26 @@ def update_profile(
     logger.info(
         f"Profile updated for user {current_user.id}: "
         f"name '{old_name}' → '{current_user.name}'"
+    )
+    return current_user
+
+
+@router.put(
+    "/theme",
+    response_model=UserResponse,
+    summary="Update the current user's theme preference",
+)
+def update_theme(
+    update_data: UserThemeUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    current_user.theme = update_data.theme
+    db.commit()
+    db.refresh(current_user)
+
+    logger.info(
+        f"Theme updated for user {current_user.id}: '{current_user.theme}'"
     )
     return current_user
 

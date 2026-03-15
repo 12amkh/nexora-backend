@@ -8,6 +8,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+from sqlalchemy import inspect, text
 from routers import auth, agents, chat, users, schedules
 from database import engine, Base, check_db_connection
 
@@ -42,6 +43,13 @@ logger.info(f"Starting Nexora API — environment={'production' if IS_PRODUCTION
 async def lifespan(app: FastAPI):
     logger.info("🚀 Nexora API starting up...")
     Base.metadata.create_all(bind=engine)
+    inspector = inspect(engine)
+    user_columns = {column["name"] for column in inspector.get_columns("users")}
+    if "theme" not in user_columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE users ADD COLUMN theme VARCHAR DEFAULT 'dark'"))
+            connection.execute(text("UPDATE users SET theme = 'dark' WHERE theme IS NULL"))
+        logger.info("✅ Added missing users.theme column")
     logger.info("✅ Database tables verified")
     db_ok = check_db_connection()
     if not db_ok:

@@ -12,6 +12,7 @@ class User(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     password_hash = Column(String, nullable=False)
     plan = Column(String, default="free")  # "free", "starter", "pro", "business", "enterprise"
+    theme = Column(String, default="dark", nullable=False)  # "dark" or "light"
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
@@ -28,4 +29,4 @@ class User(Base):
     usage_metrics = relationship("UsageMetric", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):
-        return f"<User(id={self.id}, email={self.email}, plan={self.plan})>"
+        return f"<User(id={self.id}, email={self.email}, plan={self.plan}, theme={self.theme})>"
