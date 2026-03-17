@@ -30,6 +30,7 @@ class User(Base):
     usage_metrics = relationship("UsageMetric", back_populates="user", cascade="all, delete-orphan")
     agent_reports = relationship("AgentReport", back_populates="user", cascade="all, delete-orphan")
     agent_memories = relationship("AgentMemory", back_populates="user", cascade="all, delete-orphan")
+    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email}, plan={self.plan}, theme={self.theme}, theme_family={self.theme_family})>"

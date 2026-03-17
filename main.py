@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from sqlalchemy import inspect, text
-from routers import auth, agents, chat, users, schedules
+from routers import auth, agents, chat, users, schedules, notifications
 from database import engine, Base, check_db_connection
 
 # import ALL models so SQLAlchemy registers them before create_all()
@@ -19,6 +19,7 @@ from models.agent_report import AgentReport
 from models.conversation import Conversation
 from models.schedule import Schedule
 from models.agent_memory import AgentMemory
+from models.notification import Notification
 from routers import usage_router
 from services.usage_service import UsageService 
 from routers import admin
@@ -127,6 +128,7 @@ app.include_router(agents.router)
 app.include_router(chat.router)
 app.include_router(users.router)
 app.include_router(schedules.router)
+app.include_router(notifications.router)
 app.include_router(usage_router.router)
 app.include_router(admin.router)
 

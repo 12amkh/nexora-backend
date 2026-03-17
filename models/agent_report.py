@@ -17,6 +17,7 @@ class AgentReport(Base):
 
     agent = relationship("Agent", back_populates="reports")
     user = relationship("User", back_populates="agent_reports")
+    notifications = relationship("Notification", back_populates="report", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"AgentReport(id={self.id}, agent_id={self.agent_id}, user_id={self.user_id})"

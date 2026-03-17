@@ -9,6 +9,7 @@ from models.user import User
 from models.agent import Agent
 from models.agent_report import AgentReport
 from models.conversation import Conversation
+from models.notification import Notification
 from schemas.chat import ChatRequest, ChatResponse
 from utils.dependencies import get_current_user
 from utils.agent_runner import run_agent as call_agent, stream_agent
@@ -75,6 +76,7 @@ def save_agent_report(db: Session, agent_id: int, user_id: int, message: str, co
         return None
 
     try:
+        agent = db.query(Agent).filter(Agent.id == agent_id, Agent.user_id == user_id).first()
         report = AgentReport(
             agent_id=agent_id,
             user_id=user_id,
@@ -82,6 +84,17 @@ def save_agent_report(db: Session, agent_id: int, user_id: int, message: str, co
             content=content,
         )
         db.add(report)
+        db.flush()
+        if agent:
+            notification = Notification(
+                user_id=user_id,
+                agent_id=agent_id,
+                report_id=report.id,
+                type="report_ready",
+                title=f"New report from {agent.name}",
+                message=report.title,
+            )
+            db.add(notification)
         db.commit()
         db.refresh(report)
         return report

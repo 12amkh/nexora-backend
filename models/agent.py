@@ -21,6 +21,7 @@ class Agent(Base):
     schedules     = relationship("Schedule", back_populates="agent")  # new
     reports       = relationship("AgentReport", back_populates="agent", cascade="all, delete-orphan")
     memory        = relationship("AgentMemory", back_populates="agent", uselist=False, cascade="all, delete-orphan")
+    notifications = relationship("Notification", back_populates="agent", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"Agent(id={self.id}, name={self.name})"
