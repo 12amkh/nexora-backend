@@ -71,3 +71,16 @@ class WorkflowRunResponse(BaseModel):
     input: str
     final_output: str
     steps: list[WorkflowRunStep]
+
+
+class WorkflowTemplateStep(BaseModel):
+    name: str
+    agent_type: str
+    description: str
+
+
+class WorkflowTemplateResponse(BaseModel):
+    id: str
+    title: str
+    description: str
+    steps: list[WorkflowTemplateStep]
