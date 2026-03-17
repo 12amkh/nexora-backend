@@ -32,6 +32,7 @@ class User(Base):
     agent_memories = relationship("AgentMemory", back_populates="user", cascade="all, delete-orphan")
     notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
     marketplace_items = relationship("MarketplaceItem", back_populates="owner", cascade="all, delete-orphan")
+    workflows = relationship("Workflow", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email}, plan={self.plan}, theme={self.theme}, theme_family={self.theme_family})>"
