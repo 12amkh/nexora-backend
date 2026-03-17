@@ -6,6 +6,7 @@ from copy import deepcopy
 from celery_app import celery_app
 from database import SessionLocal
 from models import Agent, Conversation, Schedule
+from services.agent_memory_service import get_agent_memory_summary, update_agent_memory
 from utils.agent_runner import run_agent
 from sqlalchemy.sql import func
 
@@ -111,11 +112,15 @@ def run_scheduled_agent(self, schedule_id: int):
         # run the agent — asyncio.run() bridges sync Celery → async agent runner
         # Celery tasks are synchronous by default
         # asyncio.run() creates a new event loop just for this task
+        scheduled_config = build_scheduled_agent_config(agent.config)
+        memory_summary = get_agent_memory_summary(db, schedule.agent_id, schedule.user_id)
+        if memory_summary:
+            scheduled_config["memory_summary"] = memory_summary
         ai_response = asyncio.run(
             run_agent(
                 user_message=schedule.task_message,
                 conversation_history=conversation_history,
-                agent_config=build_scheduled_agent_config(agent.config),
+                agent_config=scheduled_config,
             )
         )
 
@@ -133,6 +138,7 @@ def run_scheduled_agent(self, schedule_id: int):
         schedule.last_run_status = "success"
 
         db.commit()
+        update_agent_memory(db, schedule.agent_id, schedule.user_id, schedule.task_message, ai_response)
 
         logger.info(
             f"Scheduled run complete: schedule={schedule_id} "

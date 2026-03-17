@@ -143,6 +143,7 @@ def build_system_prompt(config: dict) -> str:
     custom_knowledge = config.get("custom_knowledge", "")
     use_web_search   = config.get("use_web_search",   True)
     report_mode      = config.get("report_mode",      False)
+    memory_summary   = config.get("memory_summary",   "")
 
     tone_instructions = {
         "professional": "Maintain a professional, formal tone at all times.",
@@ -172,6 +173,13 @@ def build_system_prompt(config: dict) -> str:
 
     if custom_knowledge:
         prompt_parts.append(f"Additional context you should know: {custom_knowledge}")
+
+    if memory_summary:
+        prompt_parts.append(
+            "Important memory from previous runs and conversations: "
+            f"{memory_summary} "
+            "Reuse this when it helps, but follow the latest user request when priorities conflict."
+        )
 
     if use_web_search:
         prompt_parts.append("You have access to a web search tool. Use it when the user asks about current events, real-time data, or anything that requires up-to-date information.")

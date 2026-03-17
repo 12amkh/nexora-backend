@@ -18,6 +18,7 @@ from models.agent import Agent
 from models.agent_report import AgentReport
 from models.conversation import Conversation
 from models.schedule import Schedule
+from models.agent_memory import AgentMemory
 from routers import usage_router
 from services.usage_service import UsageService 
 from routers import admin

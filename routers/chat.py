@@ -12,6 +12,7 @@ from models.conversation import Conversation
 from schemas.chat import ChatRequest, ChatResponse
 from utils.dependencies import get_current_user
 from utils.agent_runner import run_agent as call_agent, stream_agent
+from services.agent_memory_service import get_agent_memory_summary, update_agent_memory
 from services.usage_service import UsageService
 
 
@@ -130,10 +131,15 @@ async def run_agent(
     db.commit()
 
     try:
+        agent_config = dict(agent.config or {})
+        memory_summary = get_agent_memory_summary(db, chat.agent_id, current_user.id)
+        if memory_summary:
+            agent_config["memory_summary"] = memory_summary
+
         ai_response = await call_agent(
             user_message=message,
             conversation_history=conversation_history,
-            agent_config=agent.config,
+            agent_config=agent_config,
         )
     except Exception as e:
         logger.error(f"run_agent failed: agent={chat.agent_id} user={current_user.id}: {e}", exc_info=True)
@@ -144,6 +150,7 @@ async def run_agent(
     db.commit()
     db.refresh(ai_message)
     save_agent_report(db, chat.agent_id, current_user.id, message, ai_response)
+    update_agent_memory(db, chat.agent_id, current_user.id, message, ai_response)
 
     # ── RECORD USAGE AFTER SUCCESS ────────────────────────────────────────────────
     UsageService.record_message(db, current_user.id, agent_id=chat.agent_id)
@@ -196,6 +203,9 @@ async def stream_response(
     user_id = current_user.id          # plain int
     agent_id = chat.agent_id           # plain int
     agent_config = dict(agent.config)  # plain dict
+    memory_summary = get_agent_memory_summary(db, agent_id, user_id)
+    if memory_summary:
+        agent_config["memory_summary"] = memory_summary
 
     # conversation_history is a list of ORM objects — also detaches after session closes
     # convert each to a plain dict so agent_runner can safely access .role and .message
@@ -234,6 +244,7 @@ async def stream_response(
                 save_db.refresh(ai_message)
                 message_id = ai_message.id
                 save_agent_report(save_db, agent_id, user_id, message, complete_response)
+                update_agent_memory(save_db, agent_id, user_id, message, complete_response)
                 
                 # ── RECORD USAGE AFTER STREAMING COMPLETES ───────────────────────
                 UsageService.record_message(save_db, user_id, agent_id=agent_id)
