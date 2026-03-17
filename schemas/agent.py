@@ -71,6 +71,7 @@ class AgentConfig(BaseModel):
     response_length:     ResponseLength = "medium"
     language:            str           = "english"
     welcome_message:     str           = "Hello! How can I help you today?"
+    report_mode:         bool          = False
 
     # optional advanced settings
     focus_topics:        list[str]     = []   # topics the agent should stay focused on
@@ -91,6 +92,7 @@ AGENT_TEMPLATES: Dict[str, dict] = {
         "use_web_search": False,
         "response_length": "medium",
         "welcome_message": "Hi! I'm your support agent. How can I help you today?",
+        "report_mode": False,
     },
     "sales_assistant": {
         "agent_type": "sales_assistant",
@@ -99,6 +101,7 @@ AGENT_TEMPLATES: Dict[str, dict] = {
         "use_web_search": False,
         "response_length": "medium",
         "welcome_message": "Hi! I'm here to help you find the perfect solution. What are you looking for?",
+        "report_mode": False,
     },
     "lead_qualifier": {
         "agent_type": "lead_qualifier",
@@ -107,6 +110,7 @@ AGENT_TEMPLATES: Dict[str, dict] = {
         "use_web_search": False,
         "response_length": "short",
         "welcome_message": "Hi! I'd love to learn more about what you're looking for. Can I ask you a few quick questions?",
+        "report_mode": False,
     },
     "hr_assistant": {
         "agent_type": "hr_assistant",
@@ -115,6 +119,7 @@ AGENT_TEMPLATES: Dict[str, dict] = {
         "use_web_search": False,
         "response_length": "medium",
         "welcome_message": "Hello! I'm your HR assistant. What can I help you with today?",
+        "report_mode": False,
     },
     "legal_assistant": {
         "agent_type": "legal_assistant",
@@ -123,6 +128,7 @@ AGENT_TEMPLATES: Dict[str, dict] = {
         "use_web_search": True,
         "response_length": "detailed",
         "welcome_message": "Hello! I can help you understand legal documents and concepts. Note: I'm not a licensed attorney.",
+        "report_mode": False,
     },
     "web_researcher": {
         "agent_type": "web_researcher",
@@ -131,6 +137,7 @@ AGENT_TEMPLATES: Dict[str, dict] = {
         "use_web_search": True,
         "response_length": "detailed",
         "welcome_message": "Hello! Give me any topic and I'll research it thoroughly for you.",
+        "report_mode": False,
     },
     "news_monitor": {
         "agent_type": "news_monitor",
@@ -139,6 +146,7 @@ AGENT_TEMPLATES: Dict[str, dict] = {
         "use_web_search": True,
         "response_length": "medium",
         "welcome_message": "Hello! What topic or industry would you like me to monitor for news?",
+        "report_mode": False,
     },
     "competitor_analyst": {
         "agent_type": "competitor_analyst",
@@ -147,6 +155,7 @@ AGENT_TEMPLATES: Dict[str, dict] = {
         "use_web_search": True,
         "response_length": "detailed",
         "welcome_message": "Hello! Which competitor or market would you like me to analyze?",
+        "report_mode": False,
     },
     "market_researcher": {
         "agent_type": "market_researcher",
@@ -155,6 +164,7 @@ AGENT_TEMPLATES: Dict[str, dict] = {
         "use_web_search": True,
         "response_length": "detailed",
         "welcome_message": "Hello! What market or industry would you like me to research?",
+        "report_mode": False,
     },
     "academic_researcher": {
         "agent_type": "academic_researcher",
@@ -163,6 +173,7 @@ AGENT_TEMPLATES: Dict[str, dict] = {
         "use_web_search": True,
         "response_length": "detailed",
         "welcome_message": "Hello! What research topic or paper would you like me to help with?",
+        "report_mode": False,
     },
     "email_assistant": {
         "agent_type": "email_assistant",
@@ -171,6 +182,7 @@ AGENT_TEMPLATES: Dict[str, dict] = {
         "use_web_search": False,
         "response_length": "medium",
         "welcome_message": "Hello! I can help you write or improve any email. What do you need?",
+        "report_mode": False,
     },
     "meeting_summarizer": {
         "agent_type": "meeting_summarizer",
@@ -179,6 +191,7 @@ AGENT_TEMPLATES: Dict[str, dict] = {
         "use_web_search": False,
         "response_length": "detailed",
         "welcome_message": "Hello! Paste your meeting transcript or notes and I'll summarize everything for you.",
+        "report_mode": False,
     },
     "report_writer": {
         "agent_type": "report_writer",
@@ -187,6 +200,7 @@ AGENT_TEMPLATES: Dict[str, dict] = {
         "use_web_search": True,
         "response_length": "detailed",
         "welcome_message": "Hello! What report would you like me to write? Give me the topic and key points to cover.",
+        "report_mode": True,
     },
     "content_writer": {
         "agent_type": "content_writer",
@@ -195,6 +209,7 @@ AGENT_TEMPLATES: Dict[str, dict] = {
         "use_web_search": True,
         "response_length": "medium",
         "welcome_message": "Hello! What content would you like me to create for you?",
+        "report_mode": False,
     },
     "code_reviewer": {
         "agent_type": "code_reviewer",
@@ -203,6 +218,7 @@ AGENT_TEMPLATES: Dict[str, dict] = {
         "use_web_search": False,
         "response_length": "detailed",
         "welcome_message": "Hello! Paste your code and I'll review it for bugs, security issues, and improvements.",
+        "report_mode": False,
     },
     "document_analyst": {
         "agent_type": "document_analyst",
@@ -211,6 +227,7 @@ AGENT_TEMPLATES: Dict[str, dict] = {
         "use_web_search": False,
         "response_length": "detailed",
         "welcome_message": "Hello! Share a document or paste its content and I'll analyze it for you.",
+        "report_mode": False,
     },
     "data_interpreter": {
         "agent_type": "data_interpreter",
@@ -219,6 +236,7 @@ AGENT_TEMPLATES: Dict[str, dict] = {
         "use_web_search": False,
         "response_length": "detailed",
         "welcome_message": "Hello! Share your data and I'll help you understand what it means.",
+        "report_mode": False,
     },
     "sql_assistant": {
         "agent_type": "sql_assistant",
@@ -227,6 +245,7 @@ AGENT_TEMPLATES: Dict[str, dict] = {
         "use_web_search": False,
         "response_length": "medium",
         "welcome_message": "Hello! Describe what data you need and I'll help you write the SQL query.",
+        "report_mode": False,
     },
     "spreadsheet_agent": {
         "agent_type": "spreadsheet_agent",
@@ -235,6 +254,7 @@ AGENT_TEMPLATES: Dict[str, dict] = {
         "use_web_search": False,
         "response_length": "medium",
         "welcome_message": "Hello! What would you like to do with your spreadsheet?",
+        "report_mode": False,
     },
     "personal_assistant": {
         "agent_type": "personal_assistant",
@@ -243,6 +263,7 @@ AGENT_TEMPLATES: Dict[str, dict] = {
         "use_web_search": True,
         "response_length": "medium",
         "welcome_message": "Hi! I'm your personal assistant. What can I help you with today?",
+        "report_mode": False,
     },
     "language_tutor": {
         "agent_type": "language_tutor",
@@ -251,6 +272,7 @@ AGENT_TEMPLATES: Dict[str, dict] = {
         "use_web_search": False,
         "response_length": "medium",
         "welcome_message": "Hello! Which language would you like to practice today? What's your current level?",
+        "report_mode": False,
     },
     "fitness_coach": {
         "agent_type": "fitness_coach",
@@ -259,6 +281,7 @@ AGENT_TEMPLATES: Dict[str, dict] = {
         "use_web_search": True,
         "response_length": "medium",
         "welcome_message": "Hey! Ready to work on your fitness goals? Tell me about yourself and what you want to achieve.",
+        "report_mode": False,
     },
     "study_assistant": {
         "agent_type": "study_assistant",
@@ -267,6 +290,7 @@ AGENT_TEMPLATES: Dict[str, dict] = {
         "use_web_search": True,
         "response_length": "medium",
         "welcome_message": "Hello! What subject or topic would you like help studying today?",
+        "report_mode": False,
     },
     "custom": {
         "agent_type": "custom",
@@ -275,6 +299,7 @@ AGENT_TEMPLATES: Dict[str, dict] = {
         "use_web_search": True,
         "response_length": "medium",
         "welcome_message": "Hello! How can I help you today?",
+        "report_mode": False,
     },
 }
 

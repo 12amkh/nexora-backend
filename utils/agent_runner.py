@@ -142,6 +142,7 @@ def build_system_prompt(config: dict) -> str:
     avoid_topics     = config.get("avoid_topics",     [])
     custom_knowledge = config.get("custom_knowledge", "")
     use_web_search   = config.get("use_web_search",   True)
+    report_mode      = config.get("report_mode",      False)
 
     tone_instructions = {
         "professional": "Maintain a professional, formal tone at all times.",
@@ -176,6 +177,14 @@ def build_system_prompt(config: dict) -> str:
         prompt_parts.append("You have access to a web search tool. Use it when the user asks about current events, real-time data, or anything that requires up-to-date information.")
     else:
         prompt_parts.append("Answer based on your knowledge. If you don't know something, say so honestly.")
+
+    if report_mode:
+        prompt_parts.append(
+            "Report mode is enabled. Return the final answer as a structured markdown report with these exact sections in order: "
+            "# Title, ## Summary, ## Key Insights, ## Analysis, ## Sources, ## Conclusion. "
+            "Keep each section clear and substantive. In Sources, include a bullet list of the evidence, links, or references used. "
+            "If no external sources were used, explicitly say the report is based on provided context and internal knowledge."
+        )
 
     return " ".join(filter(None, prompt_parts))
 
