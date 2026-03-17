@@ -364,6 +364,7 @@ class AgentReportResponse(BaseModel):
     user_id: int
     title: str
     content: str
+    share_id: str | None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -376,7 +377,22 @@ class RecentAgentReportResponse(BaseModel):
     agent_name: str
     title: str
     content: str
+    share_id: str | None
     created_at: datetime
+
+
+class SharedAgentReportResponse(BaseModel):
+    id: int
+    agent_id: int
+    title: str
+    content: str
+    share_id: str
+    created_at: datetime
+
+
+class ShareAgentReportResponse(BaseModel):
+    id: int
+    share_id: str
 
 
 class AgentTemplateResponse(BaseModel):

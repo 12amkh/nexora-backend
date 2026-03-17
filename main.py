@@ -58,6 +58,12 @@ async def lifespan(app: FastAPI):
             connection.execute(text("ALTER TABLE users ADD COLUMN theme_family VARCHAR DEFAULT 'nexora'"))
             connection.execute(text("UPDATE users SET theme_family = 'nexora' WHERE theme_family IS NULL"))
         logger.info("✅ Added missing users.theme_family column")
+    report_columns = {column["name"] for column in inspector.get_columns("agent_reports")}
+    if "share_id" not in report_columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE agent_reports ADD COLUMN share_id VARCHAR(36)"))
+            connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_agent_reports_share_id ON agent_reports (share_id)"))
+        logger.info("✅ Added missing agent_reports.share_id column")
     logger.info("✅ Database tables verified")
     db_ok = check_db_connection()
     if not db_ok:

@@ -1,6 +1,7 @@
 # routers/agents.py
 
 import logging
+from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List
@@ -14,6 +15,8 @@ from schemas.agent import (
     AgentCreate,
     AgentReportResponse,
     RecentAgentReportResponse,
+    ShareAgentReportResponse,
+    SharedAgentReportResponse,
     AgentUpdate,
     AgentResponse,
     AgentTemplateResponse,
@@ -180,6 +183,7 @@ def list_recent_agent_reports(
             agent_name=agent_name,
             title=report.title,
             content=report.content,
+            share_id=report.share_id,
             created_at=report.created_at,
         )
         for report, agent_name in reports
@@ -215,6 +219,71 @@ def list_agent_reports(
 
     logger.info(f"Reports fetched: agent={agent_id} user={current_user.id} returned={len(reports)}")
     return reports
+
+
+@router.post(
+    "/{agent_id}/reports/{report_id}/share",
+    response_model=ShareAgentReportResponse,
+    summary="Generate or return a shareable ID for a saved agent report",
+)
+def share_agent_report(
+    agent_id: int,
+    report_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    report = (
+        db.query(AgentReport)
+        .join(Agent, Agent.id == AgentReport.agent_id)
+        .filter(
+            AgentReport.id == report_id,
+            AgentReport.agent_id == agent_id,
+            AgentReport.user_id == current_user.id,
+            Agent.user_id == current_user.id,
+        )
+        .first()
+    )
+
+    if not report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Report with id {report_id} not found.",
+        )
+
+    if not report.share_id:
+        report.share_id = str(uuid4())
+        db.commit()
+        db.refresh(report)
+
+    logger.info("Report shared: report=%s agent=%s user=%s", report_id, agent_id, current_user.id)
+    return ShareAgentReportResponse(id=report.id, share_id=report.share_id)
+
+
+@router.get(
+    "/reports/share/{share_id}",
+    response_model=SharedAgentReportResponse,
+    summary="Get a shared report by public share ID",
+)
+def get_shared_agent_report(
+    share_id: str,
+    db: Session = Depends(get_db),
+):
+    report = db.query(AgentReport).filter(AgentReport.share_id == share_id).first()
+
+    if not report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Shared report not found.",
+        )
+
+    return SharedAgentReportResponse(
+        id=report.id,
+        agent_id=report.agent_id,
+        title=report.title,
+        content=report.content,
+        share_id=report.share_id,
+        created_at=report.created_at,
+    )
 
 
 # ── Get One Agent ─────────────────────────────────────────────────────────────────

@@ -13,6 +13,7 @@ class AgentReport(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     title = Column(String(200), nullable=False)
     content = Column(Text, nullable=False)
+    share_id = Column(String(36), nullable=True, unique=True, index=True)
     created_at = Column(DateTime, default=func.now(), nullable=False)
 
     agent = relationship("Agent", back_populates="reports")
