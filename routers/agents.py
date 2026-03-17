@@ -13,6 +13,7 @@ from models.conversation import Conversation
 from schemas.agent import (
     AgentCreate,
     AgentReportResponse,
+    RecentAgentReportResponse,
     AgentUpdate,
     AgentResponse,
     AgentTemplateResponse,
@@ -142,6 +143,47 @@ def list_agents(
 
     logger.info(f"User {current_user.id} listed agents (skip={skip}, limit={limit}, returned={len(agents)})")
     return agents
+
+
+# ── Get Recent Reports Across All Agents ─────────────────────────────────────────
+@router.get(
+    "/reports/recent",
+    response_model=List[RecentAgentReportResponse],
+    summary="List the most recent saved reports across all user agents",
+)
+def list_recent_agent_reports(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    limit: int = Query(default=6, ge=1, le=20, description="Max recent reports to return"),
+):
+    reports = (
+        db.query(AgentReport, Agent.name.label("agent_name"))
+        .join(Agent, Agent.id == AgentReport.agent_id)
+        .filter(AgentReport.user_id == current_user.id, Agent.user_id == current_user.id)
+        .order_by(AgentReport.created_at.desc(), AgentReport.id.desc())
+        .limit(limit)
+        .all()
+    )
+
+    logger.info(
+        "Recent reports fetched: user=%s limit=%s returned=%s",
+        current_user.id,
+        limit,
+        len(reports),
+    )
+
+    return [
+        RecentAgentReportResponse(
+            id=report.id,
+            agent_id=report.agent_id,
+            user_id=report.user_id,
+            agent_name=agent_name,
+            title=report.title,
+            content=report.content,
+            created_at=report.created_at,
+        )
+        for report, agent_name in reports
+    ]
 
 
 # ── Get Agent Reports ─────────────────────────────────────────────────────────────
