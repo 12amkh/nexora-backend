@@ -65,6 +65,12 @@ async def lifespan(app: FastAPI):
             connection.execute(text("ALTER TABLE agent_reports ADD COLUMN share_id VARCHAR(36)"))
             connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_agent_reports_share_id ON agent_reports (share_id)"))
         logger.info("✅ Added missing agent_reports.share_id column")
+    agent_columns = {column["name"] for column in inspector.get_columns("agents")}
+    if "is_public" not in agent_columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE agents ADD COLUMN is_public BOOLEAN DEFAULT FALSE"))
+            connection.execute(text("UPDATE agents SET is_public = FALSE WHERE is_public IS NULL"))
+        logger.info("✅ Added missing agents.is_public column")
     logger.info("✅ Database tables verified")
     db_ok = check_db_connection()
     if not db_ok:

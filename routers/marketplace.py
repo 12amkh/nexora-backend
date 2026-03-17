@@ -47,7 +47,8 @@ def list_marketplace_items(
 ):
     query = (
         db.query(MarketplaceItem)
-        .filter(MarketplaceItem.is_published.is_(True))
+        .join(Agent, Agent.id == MarketplaceItem.source_agent_id)
+        .filter(MarketplaceItem.is_published.is_(True), Agent.is_public.is_(True))
         .order_by(MarketplaceItem.updated_at.desc(), MarketplaceItem.id.desc())
     )
 
@@ -106,6 +107,7 @@ def publish_agent_to_marketplace(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Agent with id {agent_id} not found.",
         )
+    agent.is_public = True
 
     item = db.query(MarketplaceItem).filter(MarketplaceItem.source_agent_id == agent_id).first()
     if not item:
@@ -149,6 +151,10 @@ def unpublish_marketplace_item(
             detail=f"Marketplace item {item_id} not found.",
         )
 
+    agent = db.query(Agent).filter(Agent.id == item.source_agent_id, Agent.user_id == current_user.id).first()
+    if agent:
+        agent.is_public = False
+
     db.delete(item)
     db.commit()
     logger.info("Marketplace item removed: item=%s user=%s", item_id, current_user.id)
@@ -188,6 +194,7 @@ def import_marketplace_item(
         name=f"{item.title} Copy",
         description=item.description,
         config=dict(item.config or {}),
+        is_public=False,
         user_id=current_user.id,
     )
     db.add(new_agent)

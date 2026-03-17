@@ -1,6 +1,6 @@
 # models/agent.py
 
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON
+from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey, JSON
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from database import Base
@@ -14,6 +14,7 @@ class Agent(Base):
     name        = Column(String, nullable=False)
     description = Column(String, nullable=False)
     config      = Column(JSON, default={})
+    is_public   = Column(Boolean, default=False, nullable=False)
     created_at  = Column(DateTime, default=func.now())
 
     user          = relationship("User",  back_populates="agents")

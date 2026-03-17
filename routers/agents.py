@@ -11,6 +11,7 @@ from models.user import User
 from models.agent import Agent
 from models.agent_report import AgentReport
 from models.conversation import Conversation
+from models.marketplace_item import MarketplaceItem
 from schemas.agent import (
     AgentCreate,
     AgentReportResponse,
@@ -33,6 +34,33 @@ router = APIRouter(
     prefix="/agents",
     tags=["Agents"]
 )
+
+
+def sync_marketplace_item(db: Session, agent: Agent):
+    item = db.query(MarketplaceItem).filter(MarketplaceItem.source_agent_id == agent.id).first()
+
+    if agent.is_public:
+        if not item:
+            item = MarketplaceItem(
+                owner_user_id=agent.user_id,
+                source_agent_id=agent.id,
+                title=agent.name,
+                description=agent.description or "Marketplace-ready Nexora agent template.",
+                agent_type=(agent.config or {}).get("agent_type", "custom"),
+                config=dict(agent.config or {}),
+                is_published=True,
+            )
+            db.add(item)
+        else:
+            item.title = agent.name
+            item.description = agent.description or "Marketplace-ready Nexora agent template."
+            item.agent_type = (agent.config or {}).get("agent_type", "custom")
+            item.config = dict(agent.config or {})
+            item.is_published = True
+        return
+
+    if item:
+        db.delete(item)
 
 
 # ── List Agent Types ──────────────────────────────────────────────────────────────
@@ -114,6 +142,7 @@ def create_agent(
         name=agent.name.strip(),
         description=agent.description.strip() if agent.description else "",
         config=base_config,
+        is_public=False,
         user_id=current_user.id,
     )
     db.add(new_agent)
@@ -341,6 +370,10 @@ def update_agent(
         existing_config = agent.config or {}
         existing_config.update(agent_data.config)
         agent.config = existing_config
+    if agent_data.is_public is not None:
+        agent.is_public = agent_data.is_public
+
+    sync_marketplace_item(db, agent)
 
     db.commit()
     db.refresh(agent)

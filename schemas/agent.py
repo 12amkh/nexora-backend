@@ -333,6 +333,7 @@ class AgentUpdate(BaseModel):
     name:        Optional[str]            = None
     description: Optional[str]            = None
     config:      Optional[Dict[str, Any]] = None
+    is_public:   Optional[bool]           = None
 
     @field_validator("name")
     @classmethod
@@ -352,6 +353,7 @@ class AgentResponse(BaseModel):
     name:        str
     description: Optional[str]
     config:      Dict[str, Any]
+    is_public:   bool
     user_id:     int
     created_at:  datetime
 
