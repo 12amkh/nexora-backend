@@ -17,6 +17,7 @@ class UserResponse(BaseModel):
     email: str
     plan: str
     theme: Literal["dark", "light"]
+    theme_family: Literal["nexora", "atelier", "fjord", "graphite"]
     created_at: datetime
 
     class Config:
@@ -25,3 +26,4 @@ class UserResponse(BaseModel):
 
 class UserThemeUpdate(BaseModel):
     theme: Literal["dark", "light"]
+    theme_family: Literal["nexora", "atelier", "fjord", "graphite"]

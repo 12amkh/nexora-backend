@@ -84,11 +84,12 @@ def update_theme(
     db: Session = Depends(get_db),
 ):
     current_user.theme = update_data.theme
+    current_user.theme_family = update_data.theme_family
     db.commit()
     db.refresh(current_user)
 
     logger.info(
-        f"Theme updated for user {current_user.id}: '{current_user.theme}'"
+        f"Theme updated for user {current_user.id}: mode='{current_user.theme}' family='{current_user.theme_family}'"
     )
     return current_user
 

@@ -51,6 +51,11 @@ async def lifespan(app: FastAPI):
             connection.execute(text("ALTER TABLE users ADD COLUMN theme VARCHAR DEFAULT 'dark'"))
             connection.execute(text("UPDATE users SET theme = 'dark' WHERE theme IS NULL"))
         logger.info("✅ Added missing users.theme column")
+    if "theme_family" not in user_columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE users ADD COLUMN theme_family VARCHAR DEFAULT 'nexora'"))
+            connection.execute(text("UPDATE users SET theme_family = 'nexora' WHERE theme_family IS NULL"))
+        logger.info("✅ Added missing users.theme_family column")
     logger.info("✅ Database tables verified")
     db_ok = check_db_connection()
     if not db_ok:

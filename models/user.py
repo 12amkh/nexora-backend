@@ -13,6 +13,7 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     plan = Column(String, default="free")  # "free", "starter", "pro", "business", "enterprise"
     theme = Column(String, default="dark", nullable=False)  # "dark" or "light"
+    theme_family = Column(String, default="nexora", nullable=False)  # selected palette family
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
@@ -30,4 +31,4 @@ class User(Base):
     agent_reports = relationship("AgentReport", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):
-        return f"<User(id={self.id}, email={self.email}, plan={self.plan}, theme={self.theme})>"
+        return f"<User(id={self.id}, email={self.email}, plan={self.plan}, theme={self.theme}, theme_family={self.theme_family})>"
