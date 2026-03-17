@@ -88,6 +88,32 @@ WORKFLOW_TEMPLATES = [
                 "name": "Startup Idea Generator",
                 "agent_type": "content_writer",
                 "description": "Generate stronger startup directions based on the market context and gaps.",
+                "config_overrides": {
+                    "instructions": (
+                        "You are a startup opportunity generator. Analyze the previous workflow output and turn it into actionable business ideas. "
+                        "Do not write marketing copy, slogans, or promotional language. "
+                        "Always return structured startup opportunities using the exact sections: "
+                        "Startup Idea, Problem, Solution, Target Market, Opportunity. "
+                        "Base each idea on the context provided, explain the unmet need clearly, and focus on practical opportunities that could become real businesses."
+                    ),
+                    "tone": "analytical",
+                    "response_length": "detailed",
+                    "use_web_search": False,
+                    "welcome_message": "Hello! I turn research context into structured startup opportunities with clear problems, solutions, markets, and opportunity rationale.",
+                    "focus_topics": [
+                        "market gaps",
+                        "user pain points",
+                        "business opportunities",
+                        "target users",
+                        "solution concepts",
+                    ],
+                    "avoid_topics": [
+                        "marketing slogans",
+                        "promotional copy",
+                        "generic branding language",
+                        "vague inspirational text",
+                    ],
+                },
             },
             {
                 "name": "Summary Report Agent",
@@ -190,6 +216,7 @@ def apply_workflow_template(
         agent_type = step["agent_type"]
         base_config = dict(AGENT_TEMPLATES.get(agent_type, AGENT_TEMPLATES["custom"]))
         base_config["agent_type"] = agent_type
+        base_config.update(step.get("config_overrides", {}))
         new_agent = Agent(
             user_id=current_user.id,
             name=step["name"],
