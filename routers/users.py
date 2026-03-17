@@ -8,6 +8,7 @@ from database import get_db
 from models.user import User
 from models.agent import Agent
 from models.conversation import Conversation
+from services.admin_service import AdminService
 from schemas.user import UserResponse, UserThemeUpdate
 from utils.dependencies import get_current_user
 
@@ -17,6 +18,19 @@ router = APIRouter(
     prefix="/users",
     tags=["Users"]
 )
+
+
+def serialize_user_response(user: User, db: Session) -> UserResponse:
+    return UserResponse(
+        id=user.id,
+        name=user.name,
+        email=user.email,
+        plan=user.plan,
+        is_admin=AdminService.is_admin(db, user.id),
+        theme=user.theme,
+        theme_family=user.theme_family,
+        created_at=user.created_at,
+    )
 
 
 # ── Update Schema ─────────────────────────────────────────────────────────────────
@@ -44,9 +58,12 @@ class UserUpdate(BaseModel):
     response_model=UserResponse,
     summary="Get the current authenticated user's profile",
 )
-def get_me(current_user: User = Depends(get_current_user)):
+def get_me(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     logger.info(f"Profile fetched for user {current_user.id} ({current_user.email})")
-    return current_user
+    return serialize_user_response(current_user, db)
 
 
 # ── Update Profile ────────────────────────────────────────────────────────────────
@@ -70,7 +87,7 @@ def update_profile(
         f"Profile updated for user {current_user.id}: "
         f"name '{old_name}' → '{current_user.name}'"
     )
-    return current_user
+    return serialize_user_response(current_user, db)
 
 
 @router.put(
@@ -91,7 +108,7 @@ def update_theme(
     logger.info(
         f"Theme updated for user {current_user.id}: mode='{current_user.theme}' family='{current_user.theme_family}'"
     )
-    return current_user
+    return serialize_user_response(current_user, db)
 
 
 # ── Get User Stats ────────────────────────────────────────────────────────────────

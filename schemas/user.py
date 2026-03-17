@@ -16,6 +16,7 @@ class UserResponse(BaseModel):
     name: str
     email: str
     plan: str
+    is_admin: bool
     theme: Literal["dark", "light"]
     theme_family: Literal["nexora", "atelier", "fjord", "graphite"]
     created_at: datetime
