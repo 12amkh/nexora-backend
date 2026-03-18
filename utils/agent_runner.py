@@ -57,7 +57,7 @@ def get_fallback_providers() -> list[dict]:
     providers = []
 
     openrouter_api_key = read_env("OPENROUTER_API_KEY")
-    openrouter_model = read_env("OPENROUTER_MODEL", "openai/gpt-5")
+    openrouter_model = read_env("OPENROUTER_MODEL", "openrouter/free")
     openrouter_schedule_model = read_env("OPENROUTER_SCHEDULE_MODEL", openrouter_model)
     if openrouter_api_key:
         providers.append(
