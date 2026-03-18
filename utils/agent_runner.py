@@ -278,8 +278,8 @@ def build_fallback_messages(system_prompt: str, history: list, user_message: str
 
 def get_provider_sequence(mode: str) -> list[str]:
     if mode == "scheduled":
-        return ["openai", "gemini", "openai-compatible", "groq"]
-    return ["openai", "gemini", "openai-compatible", "groq"]
+        return ["openai", "openai-compatible", "groq", "gemini"]
+    return ["openai", "openai-compatible", "groq", "gemini"]
 
 
 def get_openai_compatible_candidates(mode: str) -> list[dict]:
