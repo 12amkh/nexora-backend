@@ -367,6 +367,12 @@ async def run_fallback_llm(system_prompt: str, history: list, user_message: str,
             return text
         except Exception as exc:
             last_error = exc
+            if provider["name"] == "openai" and is_rate_limit_error(exc):
+                logger.warning(
+                    "run_agent: OpenAI rate-limited, skipping remaining compatible providers and falling back to Groq",
+                    exc_info=True,
+                )
+                raise
             logger.warning(
                 f"run_agent: fallback provider {provider['name']} failed, trying next provider",
                 exc_info=True,
