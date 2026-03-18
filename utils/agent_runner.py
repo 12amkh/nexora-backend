@@ -56,6 +56,20 @@ def read_env_flag(name: str, default: bool = False) -> bool:
 def get_fallback_providers() -> list[dict]:
     providers = []
 
+    openrouter_api_key = read_env("OPENROUTER_API_KEY")
+    openrouter_model = read_env("OPENROUTER_MODEL", "openai/gpt-5")
+    openrouter_schedule_model = read_env("OPENROUTER_SCHEDULE_MODEL", openrouter_model)
+    if openrouter_api_key:
+        providers.append(
+            {
+                "name": "openrouter",
+                "base_url": "https://openrouter.ai/api/v1",
+                "api_key": openrouter_api_key,
+                "model": openrouter_model,
+                "schedule_model": openrouter_schedule_model,
+            }
+        )
+
     generic_base_url = read_env("FALLBACK_LLM_BASE_URL").rstrip("/")
     generic_api_key = read_env("FALLBACK_LLM_API_KEY")
     generic_model = read_env("FALLBACK_LLM_MODEL")
@@ -68,35 +82,6 @@ def get_fallback_providers() -> list[dict]:
                 "base_url": generic_base_url,
                 "api_key": generic_api_key,
                 "model": generic_model,
-            }
-        )
-
-    gemini_enabled = read_env_flag("ENABLE_GEMINI_FALLBACK", False)
-    gemini_api_key = read_env("GEMINI_API_KEY")
-    gemini_model = read_env("GEMINI_MODEL", "gemini-3-flash-preview")
-    gemini_schedule_model = read_env("GEMINI_SCHEDULE_MODEL", gemini_model)
-    if gemini_enabled and gemini_api_key:
-        providers.append(
-            {
-                "name": "gemini",
-                "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
-                "api_key": gemini_api_key,
-                "model": gemini_model,
-                "schedule_model": gemini_schedule_model,
-            }
-        )
-
-    openai_api_key = read_env("OPENAI_API_KEY")
-    openai_model = read_env("OPENAI_MODEL", "gpt-5.4")
-    openai_schedule_model = read_env("OPENAI_SCHEDULE_MODEL", openai_model)
-    if openai_api_key:
-        providers.append(
-            {
-                "name": "openai",
-                "base_url": "https://api.openai.com/v1",
-                "api_key": openai_api_key,
-                "model": openai_model,
-                "schedule_model": openai_schedule_model,
             }
         )
 
@@ -286,8 +271,8 @@ def build_fallback_messages(system_prompt: str, history: list, user_message: str
 
 def get_provider_sequence(mode: str) -> list[str]:
     if mode == "scheduled":
-        return ["openai", "openai-compatible", "groq", "gemini"]
-    return ["openai", "openai-compatible", "groq", "gemini"]
+        return ["openrouter", "openai-compatible", "groq"]
+    return ["openrouter", "openai-compatible", "groq"]
 
 
 def get_openai_compatible_candidates(mode: str) -> list[dict]:
@@ -367,9 +352,9 @@ async def run_fallback_llm(system_prompt: str, history: list, user_message: str,
             return text
         except Exception as exc:
             last_error = exc
-            if provider["name"] == "openai" and is_rate_limit_error(exc):
+            if provider["name"] == "openrouter" and is_rate_limit_error(exc):
                 logger.warning(
-                    "run_agent: OpenAI rate-limited, skipping remaining compatible providers and falling back to Groq",
+                    "run_agent: OpenRouter rate-limited, skipping remaining compatible providers and falling back to Groq",
                     exc_info=True,
                 )
                 raise
