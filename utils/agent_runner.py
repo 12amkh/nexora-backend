@@ -277,10 +277,9 @@ def build_fallback_messages(system_prompt: str, history: list, user_message: str
 
 
 def get_provider_sequence(mode: str) -> list[str]:
-    # Scheduled work is cheaper-first; interactive chat stays quality-first.
     if mode == "scheduled":
-        return ["gemini", "groq", "openai", "openai-compatible"]
-    return ["groq", "gemini", "openai", "openai-compatible"]
+        return ["openai", "gemini", "openai-compatible", "groq"]
+    return ["openai", "gemini", "openai-compatible", "groq"]
 
 
 def get_openai_compatible_candidates(mode: str) -> list[dict]:
@@ -390,10 +389,10 @@ async def run_agent(
     logger.info(f"run_agent: type={config.get('agent_type','custom')} tone={config.get('tone','professional')} web_search={bool(tools)}")
 
     try:
-        if mode == "scheduled" and not tools and has_fallback_llm():
-            # Cheapest path for automations: try low-cost OpenAI-compatible providers first.
+        if not tools and has_fallback_llm():
+            # Prefer configured OpenAI-compatible providers first: OpenAI, then Gemini, then any generic compatible backend.
             response = await run_fallback_llm(system_prompt, history, user_message, config, mode)
-            logger.info(f"run_agent: scheduled fallback-first response generated ({len(response)} chars)")
+            logger.info(f"run_agent: fallback-first response generated ({len(response)} chars)")
             return response
 
         agent  = create_react_agent(model=llm, tools=tools)
@@ -430,6 +429,14 @@ async def stream_agent(
     logger.info(f"stream_agent: type={config.get('agent_type','custom')} web_search={bool(tools)}")
 
     try:
+        if not tools and has_fallback_llm():
+            fallback_text = await run_fallback_llm(system_prompt, history, user_message, config, mode)
+            chunk_size = 12
+            for i in range(0, len(fallback_text), chunk_size):
+                yield fallback_text[i:i + chunk_size]
+            logger.info("stream_agent: fallback-first stream complete")
+            return
+
         if tools:
             agent    = create_react_agent(model=llm, tools=tools)
             result   = await agent.ainvoke({"messages": all_messages})
