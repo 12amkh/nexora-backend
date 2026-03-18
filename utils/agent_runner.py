@@ -79,7 +79,7 @@ def get_fallback_providers() -> list[dict]:
         )
 
     openai_api_key = read_env("OPENAI_API_KEY")
-    openai_model = read_env("OPENAI_MODEL", "gpt-4o-mini")
+    openai_model = read_env("OPENAI_MODEL", "gpt-5.4")
     openai_schedule_model = read_env("OPENAI_SCHEDULE_MODEL", openai_model)
     if openai_api_key:
         providers.append(
