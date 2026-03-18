@@ -12,6 +12,7 @@ from models.agent import Agent
 from models.agent_report import AgentReport
 from models.conversation import Conversation
 from models.marketplace_item import MarketplaceItem
+from models.schedule import Schedule
 from schemas.agent import (
     AgentCreate,
     AgentReportResponse,
@@ -409,13 +410,16 @@ def delete_agent(
     deleted_conversations = db.query(Conversation).filter(
         Conversation.agent_id == agent_id
     ).delete()
+    deleted_schedules = db.query(Schedule).filter(
+        Schedule.agent_id == agent_id
+    ).delete()
 
     db.delete(agent)
     db.commit()
 
     logger.info(
         f"Agent deleted: '{agent_name}' id={agent_id} by user {current_user.id} "
-        f"({deleted_conversations} conversations also removed)"
+        f"({deleted_conversations} conversations and {deleted_schedules} schedules also removed)"
     )
 
     return {"message": f"Agent '{agent_name}' and all its history deleted successfully."}
