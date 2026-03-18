@@ -391,9 +391,12 @@ async def run_agent(
     try:
         if not tools and has_fallback_llm():
             # Prefer configured OpenAI-compatible providers first: OpenAI, then Gemini, then any generic compatible backend.
-            response = await run_fallback_llm(system_prompt, history, user_message, config, mode)
-            logger.info(f"run_agent: fallback-first response generated ({len(response)} chars)")
-            return response
+            try:
+                response = await run_fallback_llm(system_prompt, history, user_message, config, mode)
+                logger.info(f"run_agent: fallback-first response generated ({len(response)} chars)")
+                return response
+            except Exception:
+                logger.warning("run_agent: fallback-first providers failed, falling back to Groq", exc_info=True)
 
         agent  = create_react_agent(model=llm, tools=tools)
         result = await agent.ainvoke({"messages": all_messages})
@@ -430,12 +433,15 @@ async def stream_agent(
 
     try:
         if not tools and has_fallback_llm():
-            fallback_text = await run_fallback_llm(system_prompt, history, user_message, config, mode)
-            chunk_size = 12
-            for i in range(0, len(fallback_text), chunk_size):
-                yield fallback_text[i:i + chunk_size]
-            logger.info("stream_agent: fallback-first stream complete")
-            return
+            try:
+                fallback_text = await run_fallback_llm(system_prompt, history, user_message, config, mode)
+                chunk_size = 12
+                for i in range(0, len(fallback_text), chunk_size):
+                    yield fallback_text[i:i + chunk_size]
+                logger.info("stream_agent: fallback-first stream complete")
+                return
+            except Exception:
+                logger.warning("stream_agent: fallback-first providers failed, falling back to Groq", exc_info=True)
 
         if tools:
             agent    = create_react_agent(model=llm, tools=tools)
