@@ -46,6 +46,13 @@ def read_env(name: str, default: str = "") -> str:
     return value.strip() if isinstance(value, str) else default
 
 
+def read_env_flag(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
 def get_fallback_providers() -> list[dict]:
     providers = []
 
@@ -64,10 +71,11 @@ def get_fallback_providers() -> list[dict]:
             }
         )
 
+    gemini_enabled = read_env_flag("ENABLE_GEMINI_FALLBACK", False)
     gemini_api_key = read_env("GEMINI_API_KEY")
     gemini_model = read_env("GEMINI_MODEL", "gemini-3-flash-preview")
     gemini_schedule_model = read_env("GEMINI_SCHEDULE_MODEL", gemini_model)
-    if gemini_api_key:
+    if gemini_enabled and gemini_api_key:
         providers.append(
             {
                 "name": "gemini",
