@@ -22,6 +22,7 @@ from models.agent_memory import AgentMemory
 from models.notification import Notification
 from models.marketplace_item import MarketplaceItem
 from models.workflow import Workflow
+from models.workflow_run import WorkflowRun
 from routers import usage_router
 from services.usage_service import UsageService 
 from routers import admin

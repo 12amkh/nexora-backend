@@ -67,9 +67,28 @@ class WorkflowRunStep(BaseModel):
 
 
 class WorkflowRunResponse(BaseModel):
+    id: int | None = None
     workflow_id: int
     input: str
     final_output: str
+    status: str = "completed"
+    steps: list[WorkflowRunStep]
+    created_at: datetime | None = None
+
+
+class WorkflowRunHistoryItem(BaseModel):
+    id: int
+    workflow_id: int
+    status: str
+    input: str
+    final_output: str
+    error_message: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class WorkflowRunDetailResponse(WorkflowRunHistoryItem):
     steps: list[WorkflowRunStep]
 
 

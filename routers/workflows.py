@@ -7,11 +7,14 @@ from core.plan_limits import get_plan_limit, normalize_plan
 from database import get_db
 from models.agent import Agent
 from models.workflow import Workflow
+from models.workflow_run import WorkflowRun
 from models.user import User
 from schemas.agent import AGENT_TEMPLATES
 from schemas.workflow import (
     WorkflowCreate,
     WorkflowResponse,
+    WorkflowRunDetailResponse,
+    WorkflowRunHistoryItem,
     WorkflowRunRequest,
     WorkflowRunResponse,
     WorkflowRunStep,
@@ -169,6 +172,55 @@ def list_workflows(
     return workflows
 
 
+@router.get("/{workflow_id}/runs", response_model=list[WorkflowRunHistoryItem], summary="List saved runs for a workflow")
+def list_workflow_runs(
+    workflow_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    workflow = db.query(Workflow).filter(Workflow.id == workflow_id, Workflow.user_id == current_user.id).first()
+    if not workflow:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Workflow {workflow_id} not found.")
+
+    return (
+        db.query(WorkflowRun)
+        .filter(WorkflowRun.workflow_id == workflow_id, WorkflowRun.user_id == current_user.id)
+        .order_by(WorkflowRun.created_at.desc(), WorkflowRun.id.desc())
+        .all()
+    )
+
+
+@router.get("/{workflow_id}/runs/{run_id}", response_model=WorkflowRunDetailResponse, summary="Get workflow run details")
+def get_workflow_run(
+    workflow_id: int,
+    run_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    run = (
+        db.query(WorkflowRun)
+        .filter(
+            WorkflowRun.id == run_id,
+            WorkflowRun.workflow_id == workflow_id,
+            WorkflowRun.user_id == current_user.id,
+        )
+        .first()
+    )
+    if not run:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Workflow run {run_id} not found.")
+
+    return WorkflowRunDetailResponse(
+        id=run.id,
+        workflow_id=run.workflow_id,
+        status=run.status,
+        input=run.input,
+        final_output=run.final_output,
+        error_message=run.error_message,
+        created_at=run.created_at,
+        steps=[WorkflowRunStep(**step) for step in (run.steps or [])],
+    )
+
+
 @router.post("/create", response_model=WorkflowResponse, status_code=status.HTTP_201_CREATED, summary="Create a workflow")
 def create_workflow(
     workflow: WorkflowCreate,
@@ -293,36 +345,68 @@ async def run_workflow(
     ordered_agents = validate_workflow_agents(db, current_user.id, workflow.agent_ids or [])
     previous_output = ""
     steps: list[WorkflowRunStep] = []
+    request_input = request.input.strip()
 
-    for index, agent in enumerate(ordered_agents, start=1):
-        agent_config = dict(agent.config or {})
-        prompt = request.input.strip()
-        if previous_output:
-            prompt = (
-                f"Original workflow input:\n{request.input.strip()}\n\n"
-                f"Previous step output:\n{previous_output}\n\n"
-                "Use the previous step output as context and continue the workflow."
-            )
+    try:
+        for index, agent in enumerate(ordered_agents, start=1):
+            agent_config = dict(agent.config or {})
+            prompt = request_input
+            if previous_output:
+                prompt = (
+                    f"Original workflow input:\n{request_input}\n\n"
+                    f"Previous step output:\n{previous_output}\n\n"
+                    "Use the previous step output as context and continue the workflow."
+                )
 
-        output = await call_agent(
-            user_message=prompt,
-            conversation_history=[],
-            agent_config=agent_config,
-        )
-        previous_output = output
-        steps.append(
-            WorkflowRunStep(
-                agent_id=agent.id,
-                agent_name=agent.name,
-                prompt=prompt,
-                output=output,
+            output = await call_agent(
+                user_message=prompt,
+                conversation_history=[],
+                agent_config=agent_config,
             )
+            previous_output = output
+            steps.append(
+                WorkflowRunStep(
+                    agent_id=agent.id,
+                    agent_name=agent.name,
+                    prompt=prompt,
+                    output=output,
+                )
+            )
+            logger.info("Workflow step completed: workflow=%s user=%s step=%s agent=%s", workflow_id, current_user.id, index, agent.id)
+    except Exception as exc:
+        failed_run = WorkflowRun(
+            workflow_id=workflow.id,
+            user_id=current_user.id,
+            status="failed",
+            input=request_input,
+            final_output=previous_output,
+            steps=[step.model_dump() for step in steps],
+            error_message=str(exc),
         )
-        logger.info("Workflow step completed: workflow=%s user=%s step=%s agent=%s", workflow_id, current_user.id, index, agent.id)
+        db.add(failed_run)
+        db.commit()
+        logger.exception("Workflow run failed: workflow=%s user=%s", workflow_id, current_user.id)
+        raise
+
+    workflow_run = WorkflowRun(
+        workflow_id=workflow.id,
+        user_id=current_user.id,
+        status="completed",
+        input=request_input,
+        final_output=previous_output,
+        steps=[step.model_dump() for step in steps],
+        error_message="",
+    )
+    db.add(workflow_run)
+    db.commit()
+    db.refresh(workflow_run)
 
     return WorkflowRunResponse(
+        id=workflow_run.id,
         workflow_id=workflow.id,
-        input=request.input.strip(),
+        input=request_input,
         final_output=previous_output,
+        status=workflow_run.status,
         steps=steps,
+        created_at=workflow_run.created_at,
     )

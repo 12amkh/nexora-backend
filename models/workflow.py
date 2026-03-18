@@ -17,6 +17,7 @@ class Workflow(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
 
     user = relationship("User", back_populates="workflows")
+    runs = relationship("WorkflowRun", back_populates="workflow", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"Workflow(id={self.id}, user_id={self.user_id}, name={self.name})"

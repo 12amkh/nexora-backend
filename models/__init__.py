@@ -9,3 +9,4 @@ from .agent_memory import AgentMemory
 from .notification import Notification
 from .marketplace_item import MarketplaceItem
 from .workflow import Workflow
+from .workflow_run import WorkflowRun
