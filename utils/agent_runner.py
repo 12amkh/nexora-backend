@@ -403,7 +403,7 @@ async def run_agent(
     logger.info(f"run_agent: type={config.get('agent_type','custom')} tone={config.get('tone','professional')} web_search={bool(tools)}")
 
     try:
-        if not tools and has_fallback_llm():
+        if mode != "workflow" and not tools and has_fallback_llm():
             # Prefer configured OpenAI-compatible providers first: OpenAI, then Gemini, then any generic compatible backend.
             try:
                 response = await run_fallback_llm(system_prompt, history, user_message, config, mode)
@@ -446,7 +446,7 @@ async def stream_agent(
     logger.info(f"stream_agent: type={config.get('agent_type','custom')} web_search={bool(tools)}")
 
     try:
-        if not tools and has_fallback_llm():
+        if mode != "workflow" and not tools and has_fallback_llm():
             try:
                 fallback_text = await run_fallback_llm(system_prompt, history, user_message, config, mode)
                 chunk_size = 12

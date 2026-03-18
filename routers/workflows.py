@@ -530,6 +530,7 @@ async def run_workflow(
                 user_message=prompt,
                 conversation_history=[],
                 agent_config=agent_config,
+                mode="workflow",
             )
             previous_output = output
             steps.append(
