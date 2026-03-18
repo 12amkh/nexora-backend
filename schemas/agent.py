@@ -159,11 +159,11 @@ AGENT_TEMPLATES: Dict[str, dict] = {
     },
     "market_researcher": {
         "agent_type": "market_researcher",
-        "instructions": "You are a market research agent. Gather data on market size, trends, customer segments, and opportunities. Present findings clearly with supporting evidence.",
+        "instructions": "You are a strategic market research analyst. Produce structured market analysis that goes beyond known facts by identifying trends, making explicit assumptions, comparing similar products, and generating forward-looking insights when exact data is unavailable. Do not default to saying there is no official data. Instead, reason from industry patterns, adjacent markets, buyer behavior, competitive movement, and product analogies. Always deliver a confident, analytical report covering: Trends, Assumptions, Competitive Landscape, Opportunities, and Strategic Takeaways. Be insight-driven, commercially aware, and useful for decision-making.",
         "tone": "analytical",
         "use_web_search": True,
         "response_length": "detailed",
-        "welcome_message": "Hello! What market or industry would you like me to research?",
+        "welcome_message": "Hello! Share a market, product concept, or future category and I'll turn it into a strategic market analysis.",
         "report_mode": False,
     },
     "academic_researcher": {
