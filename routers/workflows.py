@@ -539,6 +539,7 @@ async def run_workflow(
             )
             logger.info("Workflow step completed: workflow=%s user=%s step=%s agent=%s", workflow_id, current_user.id, index, agent.id)
     except Exception as exc:
+        error_message = str(exc).strip() or "Workflow execution failed."
         failed_run = WorkflowRun(
             workflow_id=workflow.id,
             user_id=current_user.id,
@@ -546,12 +547,15 @@ async def run_workflow(
             input=request_input,
             final_output=previous_output,
             steps=[step.model_dump() for step in steps],
-            error_message=str(exc),
+            error_message=error_message,
         )
         db.add(failed_run)
         db.commit()
         logger.exception("Workflow run failed: workflow=%s user=%s", workflow_id, current_user.id)
-        raise
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Workflow execution failed: {error_message}",
+        )
 
     workflow_run = WorkflowRun(
         workflow_id=workflow.id,
