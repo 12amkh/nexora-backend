@@ -1,4 +1,5 @@
 import logging
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -13,6 +14,8 @@ from schemas.agent import AGENT_TEMPLATES
 from schemas.workflow import (
     WorkflowCreate,
     WorkflowResponse,
+    ShareWorkflowRunResponse,
+    SharedWorkflowRunResponse,
     WorkflowRunDetailResponse,
     WorkflowRunHistoryItem,
     WorkflowRunRequest,
@@ -294,6 +297,61 @@ def list_workflow_runs(
         .filter(WorkflowRun.workflow_id == workflow_id, WorkflowRun.user_id == current_user.id)
         .order_by(WorkflowRun.created_at.desc(), WorkflowRun.id.desc())
         .all()
+    )
+
+
+@router.post("/{workflow_id}/runs/{run_id}/share", response_model=ShareWorkflowRunResponse, summary="Generate or return a shareable ID for a workflow run")
+def share_workflow_run(
+    workflow_id: int,
+    run_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    run = (
+        db.query(WorkflowRun)
+        .join(Workflow, Workflow.id == WorkflowRun.workflow_id)
+        .filter(
+            WorkflowRun.id == run_id,
+            WorkflowRun.workflow_id == workflow_id,
+            WorkflowRun.user_id == current_user.id,
+            Workflow.user_id == current_user.id,
+        )
+        .first()
+    )
+    if not run:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Workflow run {run_id} not found.")
+
+    if not run.share_id:
+        run.share_id = str(uuid4())
+        db.commit()
+        db.refresh(run)
+
+    return ShareWorkflowRunResponse(id=run.id, share_id=run.share_id)
+
+
+@router.get("/runs/share/{share_id}", response_model=SharedWorkflowRunResponse, summary="Get a shared workflow report by public share ID")
+def get_shared_workflow_run(
+    share_id: str,
+    db: Session = Depends(get_db),
+):
+    run = (
+        db.query(WorkflowRun, Workflow.name.label("workflow_name"))
+        .join(Workflow, Workflow.id == WorkflowRun.workflow_id)
+        .filter(WorkflowRun.share_id == share_id)
+        .first()
+    )
+    if not run:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shared workflow report not found.")
+
+    workflow_run, workflow_name = run
+    return SharedWorkflowRunResponse(
+        id=workflow_run.id,
+        workflow_id=workflow_run.workflow_id,
+        workflow_name=workflow_name,
+        title=f"{workflow_name} Report",
+        content=workflow_run.final_output,
+        share_id=workflow_run.share_id,
+        created_at=workflow_run.created_at,
     )
 
 

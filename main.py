@@ -67,6 +67,12 @@ async def lifespan(app: FastAPI):
             connection.execute(text("ALTER TABLE agent_reports ADD COLUMN share_id VARCHAR(36)"))
             connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_agent_reports_share_id ON agent_reports (share_id)"))
         logger.info("✅ Added missing agent_reports.share_id column")
+    workflow_run_columns = {column["name"] for column in inspector.get_columns("workflow_runs")} if "workflow_runs" in inspector.get_table_names() else set()
+    if workflow_run_columns and "share_id" not in workflow_run_columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE workflow_runs ADD COLUMN share_id VARCHAR(36)"))
+            connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_workflow_runs_share_id ON workflow_runs (share_id)"))
+        logger.info("✅ Added missing workflow_runs.share_id column")
     agent_columns = {column["name"] for column in inspector.get_columns("agents")}
     if "is_public" not in agent_columns:
         with engine.begin() as connection:

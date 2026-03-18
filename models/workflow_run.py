@@ -16,6 +16,7 @@ class WorkflowRun(Base):
     final_output = Column(Text, nullable=False, default="")
     steps = Column(JSON, nullable=False, default=list)
     error_message = Column(Text, nullable=False, default="")
+    share_id = Column(String(36), nullable=True, unique=True, index=True)
     created_at = Column(DateTime, default=func.now(), nullable=False)
 
     workflow = relationship("Workflow", back_populates="runs")

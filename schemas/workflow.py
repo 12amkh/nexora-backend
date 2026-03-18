@@ -83,6 +83,7 @@ class WorkflowRunHistoryItem(BaseModel):
     input: str
     final_output: str
     error_message: str
+    share_id: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -90,6 +91,21 @@ class WorkflowRunHistoryItem(BaseModel):
 
 class WorkflowRunDetailResponse(WorkflowRunHistoryItem):
     steps: list[WorkflowRunStep]
+
+
+class ShareWorkflowRunResponse(BaseModel):
+    id: int
+    share_id: str
+
+
+class SharedWorkflowRunResponse(BaseModel):
+    id: int
+    workflow_id: int
+    workflow_name: str
+    title: str
+    content: str
+    share_id: str
+    created_at: datetime
 
 
 class WorkflowTemplateStep(BaseModel):
