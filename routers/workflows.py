@@ -122,6 +122,32 @@ WORKFLOW_TEMPLATES = [
                 "name": "Summary Report Agent",
                 "agent_type": "report_writer",
                 "description": "Package the best ideas and reasoning into a clean report.",
+                "config_overrides": {
+                    "instructions": (
+                        "You are a startup strategy report agent. Analyze the previous workflow output and turn it into a high-value business report for founders, operators, or investors. "
+                        "Do not produce a generic summary. Extract the strongest insight, identify the best business opportunity, quantify the upside when the context supports it, "
+                        "and make the report useful for decision-making. Always use the exact sections: Core Insight, Market Opportunity, Why Now, Strategic Advantage, Actionable Next Steps. "
+                        "Keep the tone professional, sharp, and investment-minded. Focus on insight quality, competitive logic, practical business potential, and concrete next actions."
+                    ),
+                    "tone": "professional",
+                    "response_length": "detailed",
+                    "use_web_search": False,
+                    "report_mode": True,
+                    "welcome_message": "Hello! I turn workflow findings into structured business reports with opportunity analysis and actionable next steps.",
+                    "focus_topics": [
+                        "decision-making value",
+                        "market opportunity",
+                        "strategic timing",
+                        "competitive advantage",
+                        "next-step recommendations",
+                    ],
+                    "avoid_topics": [
+                        "generic summaries",
+                        "marketing language",
+                        "vague observations",
+                        "unsupported hype",
+                    ],
+                },
             },
         ],
     },
