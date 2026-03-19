@@ -196,7 +196,8 @@ WORKFLOW_TEMPLATES = [
                         "Always return the exact sections in this order: Market Shift, Specific Workflow Gaps, Who Feels the Pain, Constraints, Wedge Opportunities, Strategic Takeaway. "
                         "You must identify at least 1 to 2 specific workflows where work is still manual, slow, error-prone, or expensive. "
                         "For each workflow, clearly state who does the work, what they do today, what breaks, and why existing tools are inadequate. "
-                        "You must include at least 2 concrete signals such as cost, downtime, labor time, water loss, delays, maintenance burden, regulatory pressure, or adoption shifts. "
+                        "You must include at least 2 concrete signals such as cost, downtime, labor time, delays, maintenance burden, missed bookings, no-shows, compliance pressure, waste, defect rates, or adoption shifts. "
+                        "Every signal must be relevant to the exact market being analyzed. Do not import numbers, metrics, or pain points from another industry. If a metric does not naturally fit the market, leave it out. "
                         "Avoid generic phrases like growing demand, digital transformation, optimize systems, or better platform. "
                         "The goal is to surface startup-relevant operational pain, not to summarize the whole market. "
                         "If the market is business-facing, especially utilities, factories, retail, clinics, gyms, restaurants, or local services, focus on operational problems inside the business that a startup can solve with a product."
@@ -234,7 +235,8 @@ WORKFLOW_TEMPLATES = [
                         "The Solution must describe the product clearly, not generic language like platform or ecosystem. "
                         "The idea must be narrow enough that a developer could start building the MVP in 1 to 2 weeks. "
                         "What to Build First must describe a small MVP feature set a team could start building this week. "
-                        "Base each idea on the context provided, explain the unmet need clearly, and focus on practical startup wedges that could become real businesses."
+                        "Base each idea on the context provided, explain the unmet need clearly, and focus on practical startup wedges that could become real businesses. "
+                        "Reject any idea that feels too broad, sounds like generic software for everyone, or includes pain points that do not clearly match the market being analyzed."
                     ),
                     "tone": "analytical",
                     "response_length": "detailed",
@@ -271,7 +273,8 @@ WORKFLOW_TEMPLATES = [
                         "Be suspicious of any output that sounds like a broad business idea. Keep narrowing until the product is tied to one workflow, one buyer, and one clear pain point. "
                         "The Business Model section must explicitly explain who pays and how. "
                         "The 30-Day Plan must include concrete execution tasks, not generic advice. "
-                        "The final output should feel like a startup advisor or investor clearly telling the user what to build next."
+                        "The final output should feel like a startup advisor or investor clearly telling the user what to build next. "
+                        "Do not carry over irrelevant language, metrics, or pain points from another industry. If a detail does not fit the current market, drop it and stay grounded in the workflow objective."
                     ),
                     "tone": "professional",
                     "response_length": "detailed",
@@ -314,15 +317,18 @@ def build_workflow_prompt(request_input: str, previous_output: str, agent_name: 
         return (
             f"Workflow objective:\n{request_input}\n\n"
             f"You are Step {step_number}: {agent_name}.\n"
-            "Produce the strongest possible output for your role and follow your required structure exactly."
+            "Produce the strongest possible output for your role and follow your required structure exactly. "
+            "Stay tightly grounded in the workflow objective. Do not invent irrelevant metrics or examples from another industry."
         )
 
     return (
         f"Workflow objective:\n{request_input}\n\n"
         f"You are Step {step_number}: {agent_name}.\n"
-        "Use the previous step output as source material, but do not repeat or lightly paraphrase it unless needed for reasoning.\n\n"
+        "Use the previous step output as source material, but do not repeat or lightly paraphrase it unless needed for reasoning. "
+        "Ignore any detail from the previous step that appears irrelevant to the workflow objective or clearly belongs to another market.\n\n"
         f"Previous step output:\n{previous_output}\n\n"
-        "Transform this into the best possible output for your role and follow your required structure exactly."
+        "Transform this into the best possible output for your role and follow your required structure exactly. "
+        "Only keep examples, metrics, and pain points that actually fit the current market."
     )
 
 
@@ -335,7 +341,8 @@ def get_runtime_workflow_config_overrides(workflow_name: str, agent_name: str) -
                     "Always return the exact sections in this order: Market Shift, Specific Workflow Gaps, Who Feels the Pain, Constraints, Wedge Opportunities, Strategic Takeaway. "
                     "You must identify at least 1 to 2 specific workflows where work is still manual, slow, error-prone, or expensive. "
                     "For each workflow, clearly state who does the work, what they do today, what breaks, and why existing tools are inadequate. "
-                    "You must include at least 2 concrete signals such as cost, downtime, labor time, water loss, delays, maintenance burden, regulatory pressure, or adoption shifts. "
+                    "You must include at least 2 concrete signals such as cost, downtime, labor time, delays, maintenance burden, missed bookings, no-shows, compliance pressure, waste, defect rates, or adoption shifts. "
+                    "Every signal must be relevant to the exact market being analyzed. Do not import numbers, metrics, or pain points from another industry. If a metric does not naturally fit the market, leave it out. "
                     "Avoid generic phrases like growing demand, digital transformation, optimize systems, or better platform. "
                     "The goal is to surface startup-relevant operational pain, not to summarize the whole market. "
                     "If the market is business-facing, especially utilities, factories, retail, clinics, gyms, restaurants, or local services, focus on operational problems inside the business that a startup can solve with a product."
@@ -370,7 +377,8 @@ def get_runtime_workflow_config_overrides(workflow_name: str, agent_name: str) -
                     "The Solution must describe the product clearly, not generic language like platform or ecosystem. "
                     "The idea must be narrow enough that a developer could start building the MVP in 1 to 2 weeks. "
                     "What to Build First must describe a small MVP feature set a team could start building this week. "
-                    "Base each idea on the context provided, explain the unmet need clearly, and focus on practical startup wedges that could become real businesses."
+                    "Base each idea on the context provided, explain the unmet need clearly, and focus on practical startup wedges that could become real businesses. "
+                    "Reject any idea that feels too broad, sounds like generic software for everyone, or includes pain points that do not clearly match the market being analyzed."
                 ),
                 "tone": "analytical",
                 "response_length": "detailed",
@@ -406,7 +414,8 @@ def get_runtime_workflow_config_overrides(workflow_name: str, agent_name: str) -
                     "Be suspicious of any output that sounds like a broad business idea. Keep narrowing until the product is tied to one workflow, one buyer, and one clear pain point. "
                     "The Business Model section must explicitly explain who pays and how. "
                     "The 30-Day Plan must include concrete execution tasks, not generic advice. "
-                    "The final output should feel like a startup advisor or investor clearly telling the user what to build next."
+                    "The final output should feel like a startup advisor or investor clearly telling the user what to build next. "
+                    "Do not carry over irrelevant language, metrics, or pain points from another industry. If a detail does not fit the current market, drop it and stay grounded in the workflow objective."
                 ),
                 "tone": "professional",
                 "response_length": "detailed",
