@@ -52,7 +52,9 @@ WORKFLOW_TEMPLATES = [
                         "Use concrete numbers, benchmarks, comparisons, and competitive context whenever possible. You must include at least 2 quantified or concrete signals such as numbers, adoption behavior, cost shifts, pricing moves, or operational benchmarks. "
                         "You must identify 1 to 2 specific workflows where work is still manual. For each one, clearly describe who does the work, what they currently do manually, and what is inefficient, error-prone, or painful about it. "
                         "You must identify at least one specific inefficiency, gap, bottleneck, or market friction and clearly describe who is affected, such as utilities, factories, engineers, operators, or procurement teams. "
-                        "If the market is food, retail, or local services, focus on manual business workflows and operational bottlenecks rather than broad strategy. "
+                        "If the market is food, retail, local services, gyms, restaurants, retail stores, or clinics, focus on manual business workflows and operational bottlenecks rather than broad strategy. "
+                        "Do not ask what those businesses should do better. Rewrite the problem as: what product, tool, or service can be built FOR this business category. "
+                        "For service-based markets, you must explicitly identify the business to sell to, the daily operational problem inside the business, and the product that could solve it. "
                         "Include at least one real-world constraint such as cost pressure, failure rate, downtime, labor inefficiency, slow adoption, or integration pain. Avoid generic phrases like 'growing demand', 'high precision', or broad industry descriptions unless you explain the specific implication. "
                         "Focus on what is changing now, why it matters now, what constraint or imbalance it creates, and where a startup or investor could exploit the shift."
                     ),
@@ -88,7 +90,9 @@ WORKFLOW_TEMPLATES = [
                         "You must generate 2 to 3 wedge opportunities only. Under Strategic Opportunities (Ranked), each opportunity must include: Target user, Exact workflow, Current pain (time, cost, or error), Why existing tools fail, Why AI can now solve it. "
                         "Transform the research into specific, non-obvious startup wedges rather than generic market commentary. Each opportunity must explain why now using timing, adoption, regulation, cost, behavior, or competitive shifts. "
                         "Eliminate generic terms like 'AI solution', 'digital transformation', or 'platform' unless you clearly define the actual product wedge. "
-                        "If the market is food, retail, or local services, opportunities must be products or tools for businesses, not business strategy advice. "
+                        "If the market is food, retail, local services, gyms, restaurants, retail stores, or clinics, opportunities must be products or tools for businesses, not business strategy advice. "
+                        "Always reframe the question from 'what should this business do?' to 'what tool or service can be built for this business?'. "
+                        "For service-based markets, every opportunity must explicitly name the business to sell to, the exact daily operational problem inside that business, and the product/tool/service that solves it. "
                         "Rank opportunities using reasoning, not arbitrary scores, and justify the ordering. Highlight at least one underserved niche, workflow gap, or neglected buyer segment. "
                         "You must not restate trends. Focus on strategic leverage, constraints, and what deserves attention first."
                     ),
@@ -126,7 +130,9 @@ WORKFLOW_TEMPLATES = [
                         "The selected opportunity must be a wedge, not a broad category. It must describe a narrow, specific product, tool, or service tied to a real workflow and a real user. "
                         "What to Build First must describe a feature-level MVP a small team could realistically build this week. "
                         "Clearly define the target customer, the exact problem, and a simple product description. Avoid generic advice like 'invest in R&D', 'build a better product', 'platform', 'ecosystem', or 'solution' unless you define exactly what it is. "
-                        "If the market is food, retail, or local services, the recommendation must be a product or tool for businesses such as software, automation, retention tooling, ordering tooling, workflow tooling, or an operational service layer, not a business strategy like improving menus or expanding locations. "
+                        "If the market is food, retail, local services, gyms, restaurants, retail stores, or clinics, the recommendation must be a product or tool for businesses such as software, automation, retention tooling, reminder tooling, ordering tooling, booking tooling, attendance analytics, workflow tooling, or an operational service layer. "
+                        "Do not output advice about improving the business itself, like better classes, better marketing, better menus, or expanding locations. Always output something a startup can sell to that business to solve an operational problem inside its daily workflow. "
+                        "For service-based markets, the final recommendation must clearly state three things: the business being sold to, the operational problem inside that business, and the product being built to solve it. "
                         "The Business Model section must explicitly explain who pays and how. If the idea sounds like a consulting report instead of something a developer can start building this week, it is too abstract and must be narrowed further. "
                         "The tone should feel like a startup advisor or investor memo telling the user exactly what to build next."
                     ),
