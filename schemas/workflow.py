@@ -104,6 +104,7 @@ class SharedWorkflowRunResponse(BaseModel):
     workflow_name: str
     title: str
     content: str
+    steps: list[WorkflowRunStep]
     share_id: str
     created_at: datetime
 

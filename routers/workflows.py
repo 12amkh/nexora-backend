@@ -47,22 +47,23 @@ WORKFLOW_TEMPLATES = [
                 "description": "Collect the most important recent developments and signal shifts.",
                 "config_overrides": {
                     "instructions": (
-                        "You are a market intelligence agent. Your job is to gather fast-moving developments and convert them into structured market intelligence, not a generic summary. "
-                        "Always return the exact sections: Market Trends, Key Drivers, Risks, Opportunities, Data Points. "
-                        "Focus on meaningful shifts, explain what is driving them, and surface concrete evidence, examples, or directional signals. "
-                        "Avoid weak recap language, filler observations, and broad news summaries that do not create strategic value."
+                        "You are a senior market intelligence analyst. Your job is to gather fast-moving developments and convert them into deep, data-driven market intelligence, not a broad summary. "
+                        "Always return the exact sections in this order: 1. Market Shift 2. Key Drivers 3. Market Tensions 4. Opportunities 5. Data Signals 6. Strategic Takeaway. "
+                        "Use concrete numbers, benchmarks, comparisons, and competitive context whenever possible. Avoid generic phrases like 'the market is growing' unless you explain the strategic implication. "
+                        "Surface non-obvious insights, explain what is changing, why it matters, where pressure is building, and what signal operators should pay attention to."
                     ),
                     "tone": "analytical",
                     "response_length": "detailed",
                     "use_web_search": True,
                     "welcome_message": "Hello! I turn current developments into structured market intelligence with clear trends, risks, opportunities, and data points.",
                     "focus_topics": [
-                        "market trends",
+                        "market shifts",
                         "demand shifts",
                         "key drivers",
-                        "risks",
+                        "market tensions",
                         "opportunities",
-                        "evidence and signals",
+                        "data signals",
+                        "competitive context",
                     ],
                     "avoid_topics": [
                         "generic summaries",
@@ -78,20 +79,22 @@ WORKFLOW_TEMPLATES = [
                 "description": "Extract patterns, implications, and the strongest takeaways from the research.",
                 "config_overrides": {
                     "instructions": (
-                        "You are an insight analysis agent. Analyze the previous workflow output, identify the strongest patterns, and convert them into prioritized strategic opportunities. "
-                        "Keep your analytical style, but add explicit prioritization or opportunity scoring when useful. "
-                        "Separate high-signal insights from weaker ones, explain the implications, and make it obvious which ideas deserve attention first."
+                        "You are a VC-style strategy analyst. Do not summarize the previous step. Transform the research into cause-and-effect logic, strategic insight, and prioritization. "
+                        "Always return the exact sections in this order: 1. Hidden Patterns 2. Strategic Opportunities (Ranked) 3. Market Contradictions 4. Strategic Recommendations. "
+                        "Under Strategic Opportunities (Ranked), each ranked opportunity must include: Opportunity, Why it exists, Why now, Difficulty level (1–5), Impact level (1–5). "
+                        "Rank opportunities using reasoning, not arbitrary scores. Focus on hidden patterns, strategic leverage, and what deserves attention first."
                     ),
                     "tone": "analytical",
                     "response_length": "detailed",
                     "use_web_search": False,
                     "welcome_message": "Hello! I turn market intelligence into prioritized insights and scored strategic opportunities.",
                     "focus_topics": [
-                        "pattern recognition",
+                        "hidden patterns",
                         "opportunity scoring",
                         "prioritization",
                         "strategic implications",
-                        "high-signal takeaways",
+                        "market contradictions",
+                        "cause and effect logic",
                     ],
                     "avoid_topics": [
                         "flat summaries",
@@ -109,10 +112,10 @@ WORKFLOW_TEMPLATES = [
                     "instructions": (
                         "You are a decision and execution agent, not a summarizer. Analyze the previous workflow outputs and select exactly ONE best opportunity. "
                         "You must never output sections named Summary, Key Insights, Analysis, or Conclusion. "
-                        "You must always use this exact structure and section order: 1. Best Opportunity 2. Why It Wins 3. What to Build First 4. Key Risks and Mitigation 5. 30-Day Action Plan. "
+                        "You must always use this exact structure and section order: 1. Best Opportunity 2. Why It Wins 3. What To Build First 4. Business Model 5. Risks + Mitigation 6. 30-Day Execution Plan. "
                         "Do not repeat or paraphrase previous content unless it is strictly necessary to justify the decision. Transform the prior insights into a clear recommendation and concrete execution steps. "
-                        "In Key Risks and Mitigation, include at least 2 risks and a clear mitigation for each. "
-                        "In 30-Day Action Plan, provide week-by-week execution steps. "
+                        "In Risks + Mitigation, include at least 2 risks and a clear mitigation for each. "
+                        "In 30-Day Execution Plan, provide week-by-week execution steps. "
                         "The tone should feel like a startup advisor telling the user exactly what to build next."
                     ),
                     "tone": "professional",
@@ -241,6 +244,33 @@ WORKFLOW_TEMPLATES = [
 ]
 
 
+def normalize_workflow_text(content: str) -> str:
+    cleaned = (content or "").strip()
+    if cleaned.startswith("```"):
+        cleaned = cleaned.strip("`").strip()
+    cleaned = cleaned.replace("\r\n", "\n").replace("\r", "\n")
+    cleaned = "\n".join(line.rstrip() for line in cleaned.split("\n"))
+    cleaned = "\n\n".join(part.strip() for part in cleaned.split("\n\n") if part.strip())
+    return cleaned or "No usable output was generated for this step."
+
+
+def build_workflow_prompt(request_input: str, previous_output: str, agent_name: str, step_number: int) -> str:
+    if step_number == 1 or not previous_output:
+        return (
+            f"Workflow objective:\n{request_input}\n\n"
+            f"You are Step {step_number}: {agent_name}.\n"
+            "Produce the strongest possible output for your role and follow your required structure exactly."
+        )
+
+    return (
+        f"Workflow objective:\n{request_input}\n\n"
+        f"You are Step {step_number}: {agent_name}.\n"
+        "Use the previous step output as source material, but do not repeat or lightly paraphrase it unless needed for reasoning.\n\n"
+        f"Previous step output:\n{previous_output}\n\n"
+        "Transform this into the best possible output for your role and follow your required structure exactly."
+    )
+
+
 def serialize_template(template: dict) -> WorkflowTemplateResponse:
     return WorkflowTemplateResponse(
         id=template["id"],
@@ -353,6 +383,7 @@ def get_shared_workflow_run(
         workflow_name=workflow_name,
         title=f"{workflow_name} Report",
         content=workflow_run.final_output,
+        steps=[WorkflowRunStep(**step) for step in (workflow_run.steps or [])],
         share_id=workflow_run.share_id,
         created_at=workflow_run.created_at,
     )
@@ -518,20 +549,20 @@ async def run_workflow(
     try:
         for index, agent in enumerate(ordered_agents, start=1):
             agent_config = dict(agent.config or {})
-            prompt = request_input
-            if previous_output:
-                prompt = (
-                    f"Original workflow input:\n{request_input}\n\n"
-                    f"Previous step output:\n{previous_output}\n\n"
-                    "Use the previous step output as context and continue the workflow."
-                )
+            prompt = build_workflow_prompt(
+                request_input=request_input,
+                previous_output=previous_output,
+                agent_name=agent.name,
+                step_number=index,
+            )
 
-            output = await call_agent(
+            raw_output = await call_agent(
                 user_message=prompt,
                 conversation_history=[],
                 agent_config=agent_config,
                 mode="workflow",
             )
+            output = normalize_workflow_text(raw_output)
             previous_output = output
             steps.append(
                 WorkflowRunStep(
