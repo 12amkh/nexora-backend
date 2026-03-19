@@ -446,6 +446,52 @@ def get_runtime_workflow_config_overrides(workflow_name: str, agent_name: str) -
     return {}
 
 
+async def run_workflow_step_with_timeout(
+    *,
+    prompt: str,
+    agent_config: dict,
+    agent_name: str,
+    step_number: int,
+) -> str:
+    try:
+        return await asyncio.wait_for(
+            call_agent(
+                user_message=prompt,
+                conversation_history=[],
+                agent_config=agent_config,
+                mode="workflow",
+            ),
+            timeout=WORKFLOW_STEP_TIMEOUT_SECONDS,
+        )
+    except TimeoutError:
+        fallback_config = dict(agent_config)
+        fallback_config["use_web_search"] = False
+        if fallback_config.get("response_length") == "detailed":
+            fallback_config["response_length"] = "medium"
+
+        logger.warning(
+            "Workflow step timed out, retrying without web search: step=%s agent=%s timeout=%ss",
+            step_number,
+            agent_name,
+            WORKFLOW_STEP_TIMEOUT_SECONDS,
+        )
+
+        try:
+            return await asyncio.wait_for(
+                call_agent(
+                    user_message=prompt,
+                    conversation_history=[],
+                    agent_config=fallback_config,
+                    mode="workflow",
+                ),
+                timeout=WORKFLOW_STEP_TIMEOUT_SECONDS,
+            )
+        except TimeoutError as exc:
+            raise RuntimeError(
+                f"Workflow step {step_number} ({agent_name}) timed out after {WORKFLOW_STEP_TIMEOUT_SECONDS} seconds, including a retry without web search."
+            ) from exc
+
+
 def serialize_template(template: dict) -> WorkflowTemplateResponse:
     return WorkflowTemplateResponse(
         id=template["id"],
@@ -732,20 +778,12 @@ async def run_workflow(
                 step_number=index,
             )
 
-            try:
-                raw_output = await asyncio.wait_for(
-                    call_agent(
-                        user_message=prompt,
-                        conversation_history=[],
-                        agent_config=agent_config,
-                        mode="workflow",
-                    ),
-                    timeout=WORKFLOW_STEP_TIMEOUT_SECONDS,
-                )
-            except TimeoutError as exc:
-                raise RuntimeError(
-                    f"Workflow step {index} ({agent.name}) timed out after {WORKFLOW_STEP_TIMEOUT_SECONDS} seconds."
-                ) from exc
+            raw_output = await run_workflow_step_with_timeout(
+                prompt=prompt,
+                agent_config=agent_config,
+                agent_name=agent.name,
+                step_number=index,
+            )
             output = normalize_workflow_text(raw_output)
             previous_output = output
             steps.append(
