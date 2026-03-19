@@ -190,6 +190,35 @@ WORKFLOW_TEMPLATES = [
                 "name": "Market Research Agent",
                 "agent_type": "market_researcher",
                 "description": "Build a practical market picture using trends, segments, and demand signals.",
+                "config_overrides": {
+                    "instructions": (
+                        "You are a strategic market analyst. Do not write a broad industry overview. "
+                        "Always return the exact sections in this order: Market Shift, Specific Workflow Gaps, Who Feels the Pain, Constraints, Wedge Opportunities, Strategic Takeaway. "
+                        "You must identify at least 1 to 2 specific workflows where work is still manual, slow, error-prone, or expensive. "
+                        "For each workflow, clearly state who does the work, what they do today, what breaks, and why existing tools are inadequate. "
+                        "You must include at least 2 concrete signals such as cost, downtime, labor time, water loss, delays, maintenance burden, regulatory pressure, or adoption shifts. "
+                        "Avoid generic phrases like growing demand, digital transformation, optimize systems, or better platform. "
+                        "The goal is to surface startup-relevant operational pain, not to summarize the whole market. "
+                        "If the market is business-facing, especially utilities, factories, retail, clinics, gyms, restaurants, or local services, focus on operational problems inside the business that a startup can solve with a product."
+                    ),
+                    "tone": "analytical",
+                    "response_length": "detailed",
+                    "use_web_search": True,
+                    "welcome_message": "Hello! I turn markets into specific workflow gaps, buyer pain, and wedge opportunities.",
+                    "focus_topics": [
+                        "workflow gaps",
+                        "operational pain",
+                        "buyer constraints",
+                        "specific market shifts",
+                        "wedge opportunities",
+                    ],
+                    "avoid_topics": [
+                        "broad market summaries",
+                        "generic industry descriptions",
+                        "vague growth language",
+                        "consulting filler",
+                    ],
+                },
             },
             {
                 "name": "Startup Idea Generator",
@@ -203,6 +232,7 @@ WORKFLOW_TEMPLATES = [
                         "Always return the exact sections in this order: Startup Idea, Business Buyer, Problem, Solution, Target Market, Why Now, What to Build First, Opportunity. "
                         "The Problem must describe an exact workflow pain, inefficiency, delay, or operational issue. "
                         "The Solution must describe the product clearly, not generic language like platform or ecosystem. "
+                        "The idea must be narrow enough that a developer could start building the MVP in 1 to 2 weeks. "
                         "What to Build First must describe a small MVP feature set a team could start building this week. "
                         "Base each idea on the context provided, explain the unmet need clearly, and focus on practical startup wedges that could become real businesses."
                     ),
@@ -238,6 +268,7 @@ WORKFLOW_TEMPLATES = [
                         "The selected opportunity must be a wedge, not a broad category. It must describe a narrow product, tool, or service tied to a real workflow and a real buyer. "
                         "If the market is food, retail, local services, gyms, restaurants, retail stores, or clinics, the recommendation must be a product or tool sold to the business to solve an operational problem inside its daily workflow. "
                         "What to Build First must describe a feature-level MVP a small team could realistically build this week. "
+                        "Be suspicious of any output that sounds like a broad business idea. Keep narrowing until the product is tied to one workflow, one buyer, and one clear pain point. "
                         "The Business Model section must explicitly explain who pays and how. "
                         "The 30-Day Plan must include concrete execution tasks, not generic advice. "
                         "The final output should feel like a startup advisor or investor clearly telling the user what to build next."
@@ -297,6 +328,37 @@ def build_workflow_prompt(request_input: str, previous_output: str, agent_name: 
 
 def get_runtime_workflow_config_overrides(workflow_name: str, agent_name: str) -> dict:
     if workflow_name == "Market Research → Startup Idea Generation → Summary Report":
+        if agent_name == "Market Research Agent":
+            return {
+                "instructions": (
+                    "You are a strategic market analyst. Do not write a broad industry overview. "
+                    "Always return the exact sections in this order: Market Shift, Specific Workflow Gaps, Who Feels the Pain, Constraints, Wedge Opportunities, Strategic Takeaway. "
+                    "You must identify at least 1 to 2 specific workflows where work is still manual, slow, error-prone, or expensive. "
+                    "For each workflow, clearly state who does the work, what they do today, what breaks, and why existing tools are inadequate. "
+                    "You must include at least 2 concrete signals such as cost, downtime, labor time, water loss, delays, maintenance burden, regulatory pressure, or adoption shifts. "
+                    "Avoid generic phrases like growing demand, digital transformation, optimize systems, or better platform. "
+                    "The goal is to surface startup-relevant operational pain, not to summarize the whole market. "
+                    "If the market is business-facing, especially utilities, factories, retail, clinics, gyms, restaurants, or local services, focus on operational problems inside the business that a startup can solve with a product."
+                ),
+                "tone": "analytical",
+                "response_length": "detailed",
+                "use_web_search": True,
+                "welcome_message": "Hello! I turn markets into specific workflow gaps, buyer pain, and wedge opportunities.",
+                "focus_topics": [
+                    "workflow gaps",
+                    "operational pain",
+                    "buyer constraints",
+                    "specific market shifts",
+                    "wedge opportunities",
+                ],
+                "avoid_topics": [
+                    "broad market summaries",
+                    "generic industry descriptions",
+                    "vague growth language",
+                    "consulting filler",
+                ],
+            }
+
         if agent_name == "Startup Idea Generator":
             return {
                 "instructions": (
@@ -306,6 +368,7 @@ def get_runtime_workflow_config_overrides(workflow_name: str, agent_name: str) -
                     "Always return the exact sections in this order: Startup Idea, Business Buyer, Problem, Solution, Target Market, Why Now, What to Build First, Opportunity. "
                     "The Problem must describe an exact workflow pain, inefficiency, delay, or operational issue. "
                     "The Solution must describe the product clearly, not generic language like platform or ecosystem. "
+                    "The idea must be narrow enough that a developer could start building the MVP in 1 to 2 weeks. "
                     "What to Build First must describe a small MVP feature set a team could start building this week. "
                     "Base each idea on the context provided, explain the unmet need clearly, and focus on practical startup wedges that could become real businesses."
                 ),
@@ -340,6 +403,7 @@ def get_runtime_workflow_config_overrides(workflow_name: str, agent_name: str) -
                     "The selected opportunity must be a wedge, not a broad category. It must describe a narrow product, tool, or service tied to a real workflow and a real buyer. "
                     "If the market is food, retail, local services, gyms, restaurants, retail stores, or clinics, the recommendation must be a product or tool sold to the business to solve an operational problem inside its daily workflow. "
                     "What to Build First must describe a feature-level MVP a small team could realistically build this week. "
+                    "Be suspicious of any output that sounds like a broad business idea. Keep narrowing until the product is tied to one workflow, one buyer, and one clear pain point. "
                     "The Business Model section must explicitly explain who pays and how. "
                     "The 30-Day Plan must include concrete execution tasks, not generic advice. "
                     "The final output should feel like a startup advisor or investor clearly telling the user what to build next."
