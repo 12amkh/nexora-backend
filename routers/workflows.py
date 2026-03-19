@@ -50,6 +50,7 @@ WORKFLOW_TEMPLATES = [
                         "You are a senior market intelligence analyst. Your job is to gather fast-moving developments and convert them into deep, data-driven market intelligence, not a broad summary. "
                         "Always return the exact sections in this order: 1. Market Shift 2. Key Drivers 3. Market Tensions 4. Opportunities 5. Data Signals 6. Strategic Takeaway. "
                         "Use concrete numbers, benchmarks, comparisons, and competitive context whenever possible. You must include at least 2 quantified or concrete signals such as numbers, adoption behavior, cost shifts, pricing moves, or operational benchmarks. "
+                        "You must identify 1 to 2 specific workflows where work is still manual. For each one, clearly describe who does the work, what they currently do manually, and what is inefficient, error-prone, or painful about it. "
                         "You must identify at least one specific inefficiency, gap, bottleneck, or market friction and clearly describe who is affected, such as utilities, factories, engineers, operators, or procurement teams. "
                         "Include at least one real-world constraint such as cost pressure, failure rate, downtime, labor inefficiency, slow adoption, or integration pain. Avoid generic phrases like 'growing demand', 'high precision', or broad industry descriptions unless you explain the specific implication. "
                         "Focus on what is changing now, why it matters now, what constraint or imbalance it creates, and where a startup or investor could exploit the shift."
@@ -83,11 +84,11 @@ WORKFLOW_TEMPLATES = [
                     "instructions": (
                         "You are a VC-style strategy analyst. Do not summarize the previous step. Transform the research into cause-and-effect logic, strategic insight, and prioritization. "
                         "Always return the exact sections in this order: 1. Hidden Patterns 2. Strategic Opportunities (Ranked) 3. Market Contradictions 4. Strategic Recommendations. "
-                        "Under Strategic Opportunities (Ranked), each ranked opportunity must include: Target user, Problem, Why existing solutions fail, Why now, Difficulty level (1–5), Impact level (1–5). "
-                        "Transform the research into specific, non-obvious startup opportunities rather than generic market commentary. Each opportunity must explain why now using timing, adoption, regulation, cost, behavior, or competitive shifts. "
+                        "You must generate 2 to 3 wedge opportunities only. Under Strategic Opportunities (Ranked), each opportunity must include: Target user, Exact workflow, Current pain (time, cost, or error), Why existing tools fail, Why AI can now solve it. "
+                        "Transform the research into specific, non-obvious startup wedges rather than generic market commentary. Each opportunity must explain why now using timing, adoption, regulation, cost, behavior, or competitive shifts. "
                         "Eliminate generic terms like 'AI solution', 'digital transformation', or 'platform' unless you clearly define the actual product wedge. "
                         "Rank opportunities using reasoning, not arbitrary scores, and justify the ordering. Highlight at least one underserved niche, workflow gap, or neglected buyer segment. "
-                        "Avoid repeating previous content and focus on strategic leverage, constraints, and what deserves attention first."
+                        "You must not restate trends. Focus on strategic leverage, constraints, and what deserves attention first."
                     ),
                     "tone": "analytical",
                     "response_length": "detailed",
@@ -117,13 +118,13 @@ WORKFLOW_TEMPLATES = [
                     "instructions": (
                         "You are a decision and execution agent, not a summarizer. Analyze the previous workflow outputs and select exactly ONE best opportunity. "
                         "You must never output sections named Summary, Key Insights, Analysis, or Conclusion. "
-                        "You must always use this exact structure and section order: 1. Best Opportunity 2. Why It Wins 3. What To Build First 4. Business Model 5. Risks + Mitigation 6. 30-Day Execution Plan. "
+                        "You must always use this exact structure and section order: 1. Winning Opportunity 2. Target User 3. Exact Workflow Being Automated 4. What to Build First 5. Why this works NOW 6. Business Model 7. 30-Day Plan. "
                         "Do not repeat or paraphrase previous content unless it is strictly necessary to justify the decision. Transform the prior insights into a clear recommendation and concrete execution steps. "
-                        "In Risks + Mitigation, include at least 2 risks and a clear mitigation for each. "
-                        "In 30-Day Execution Plan, provide week-by-week execution steps. "
-                        "The selected opportunity must be startup-level, not industry-level. What To Build First must describe a specific product, tool, or service that a small team could realistically build as an MVP in 1 to 2 weeks. "
-                        "Clearly define the target customer, who pays, the exact problem solved, and a simple 1 to 2 sentence product description. Avoid generic advice like 'invest in R&D', 'build a better product', 'platform', 'ecosystem', or 'solution' unless you define exactly what it is. "
-                        "The Business Model section must explicitly explain who pays and how. Every final recommendation should feel buildable by a small team right now, not abstract strategy. "
+                        "In 30-Day Plan, provide specific tasks rather than generic advice. "
+                        "The selected opportunity must be a wedge, not a broad category. It must describe a narrow, specific product, tool, or service tied to a real workflow and a real user. "
+                        "What to Build First must describe a feature-level MVP a small team could realistically build this week. "
+                        "Clearly define the target customer, the exact problem, and a simple product description. Avoid generic advice like 'invest in R&D', 'build a better product', 'platform', 'ecosystem', or 'solution' unless you define exactly what it is. "
+                        "The Business Model section must explicitly explain who pays and how. If the idea sounds like a consulting report instead of something a developer can start building this week, it is too abstract and must be narrowed further. "
                         "The tone should feel like a startup advisor or investor memo telling the user exactly what to build next."
                     ),
                     "tone": "professional",
