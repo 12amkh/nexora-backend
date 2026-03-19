@@ -1,4 +1,6 @@
+import asyncio
 import logging
+import os
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -29,6 +31,7 @@ from utils.agent_runner import run_agent as call_agent
 from utils.dependencies import get_current_user
 
 logger = logging.getLogger(__name__)
+WORKFLOW_STEP_TIMEOUT_SECONDS = max(15, int(os.getenv("WORKFLOW_STEP_TIMEOUT_SECONDS", "45")))
 
 router = APIRouter(
     prefix="/workflows",
@@ -729,12 +732,20 @@ async def run_workflow(
                 step_number=index,
             )
 
-            raw_output = await call_agent(
-                user_message=prompt,
-                conversation_history=[],
-                agent_config=agent_config,
-                mode="workflow",
-            )
+            try:
+                raw_output = await asyncio.wait_for(
+                    call_agent(
+                        user_message=prompt,
+                        conversation_history=[],
+                        agent_config=agent_config,
+                        mode="workflow",
+                    ),
+                    timeout=WORKFLOW_STEP_TIMEOUT_SECONDS,
+                )
+            except TimeoutError as exc:
+                raise RuntimeError(
+                    f"Workflow step {index} ({agent.name}) timed out after {WORKFLOW_STEP_TIMEOUT_SECONDS} seconds."
+                ) from exc
             output = normalize_workflow_text(raw_output)
             previous_output = output
             steps.append(
