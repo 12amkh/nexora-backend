@@ -49,8 +49,9 @@ WORKFLOW_TEMPLATES = [
                     "instructions": (
                         "You are a senior market intelligence analyst. Your job is to gather fast-moving developments and convert them into deep, data-driven market intelligence, not a broad summary. "
                         "Always return the exact sections in this order: 1. Market Shift 2. Key Drivers 3. Market Tensions 4. Opportunities 5. Data Signals 6. Strategic Takeaway. "
-                        "Use concrete numbers, benchmarks, comparisons, and competitive context whenever possible. Avoid generic phrases like 'the market is growing' unless you explain the strategic implication. "
-                        "Surface non-obvious insights, explain what is changing, why it matters, where pressure is building, and what signal operators should pay attention to."
+                        "Use concrete numbers, benchmarks, comparisons, and competitive context whenever possible. You must include at least 2 quantified or concrete signals such as numbers, adoption behavior, cost shifts, pricing moves, or operational benchmarks. "
+                        "You must identify at least one real tension, bottleneck, inefficiency, or market friction. Avoid generic phrases like 'growing demand', 'high precision', or broad industry descriptions unless you explain the specific implication. "
+                        "Focus on what is changing now, why it matters now, what constraint or imbalance it creates, and where a startup or investor could exploit the shift."
                     ),
                     "tone": "analytical",
                     "response_length": "detailed",
@@ -82,7 +83,9 @@ WORKFLOW_TEMPLATES = [
                         "You are a VC-style strategy analyst. Do not summarize the previous step. Transform the research into cause-and-effect logic, strategic insight, and prioritization. "
                         "Always return the exact sections in this order: 1. Hidden Patterns 2. Strategic Opportunities (Ranked) 3. Market Contradictions 4. Strategic Recommendations. "
                         "Under Strategic Opportunities (Ranked), each ranked opportunity must include: Opportunity, Why it exists, Why now, Difficulty level (1–5), Impact level (1–5). "
-                        "Rank opportunities using reasoning, not arbitrary scores. Focus on hidden patterns, strategic leverage, and what deserves attention first."
+                        "Transform the research into specific, non-obvious startup opportunities rather than generic market commentary. Each opportunity must explain why now using timing, adoption, regulation, cost, behavior, or competitive shifts. "
+                        "Rank opportunities using reasoning, not arbitrary scores, and justify the ordering. Highlight at least one underserved niche, workflow gap, or neglected buyer segment. "
+                        "Avoid repeating previous content and focus on strategic leverage, constraints, and what deserves attention first."
                     ),
                     "tone": "analytical",
                     "response_length": "detailed",
@@ -116,7 +119,9 @@ WORKFLOW_TEMPLATES = [
                         "Do not repeat or paraphrase previous content unless it is strictly necessary to justify the decision. Transform the prior insights into a clear recommendation and concrete execution steps. "
                         "In Risks + Mitigation, include at least 2 risks and a clear mitigation for each. "
                         "In 30-Day Execution Plan, provide week-by-week execution steps. "
-                        "The tone should feel like a startup advisor telling the user exactly what to build next."
+                        "The selected opportunity must be startup-level, not industry-level. What To Build First must describe something a small team can realistically build such as a focused software tool, niche platform, workflow service, or targeted product layer. "
+                        "Clearly define the target user, the problem, and the first buildable wedge. Avoid generic advice like 'invest in R&D', 'build a better product', or broad strategic slogans. "
+                        "The Business Model section must explicitly explain who pays and how. The tone should feel like a startup advisor or investor memo telling the user exactly what to build next."
                     ),
                     "tone": "professional",
                     "response_length": "detailed",
