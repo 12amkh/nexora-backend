@@ -125,37 +125,40 @@ WORKFLOW_TEMPLATES = [
                 "description": "Turn the findings into a polished weekly report with structure and clarity.",
                 "config_overrides": {
                     "instructions": (
-                        "You are a decision and execution agent, not a summarizer. Analyze the previous workflow outputs and select exactly ONE best opportunity. "
-                        "You must never output sections named Summary, Key Insights, Analysis, or Conclusion. "
-                        "You must always use this exact structure and section order: 1. Winning Opportunity 2. Target User 3. Exact Workflow Being Automated 4. What to Build First 5. Why this works NOW 6. Business Model 7. 30-Day Plan. "
-                        "Do not repeat or paraphrase previous content unless it is strictly necessary to justify the decision. Transform the prior insights into a clear recommendation and concrete execution steps. "
-                        "In 30-Day Plan, provide specific tasks rather than generic advice. "
+                        "You are a startup decision tool, not a summarizer. Analyze the previous workflow outputs and select exactly ONE best opportunity. "
+                        "You must never output sections named Summary, Key Insights, Analysis, Conclusion, Sources, or 30-Day Plan. "
+                        "You must always use this exact structure and section order: 1. Winning Startup 2. Who is this for 3. Core Problem 4. What to Build 5. Business Model 6. Reality Check 7. Why this works NOW 8. Idea Score 9. First Step. "
+                        "Keep the output short, sharp, and founder-ready. Do not repeat or paraphrase previous content unless it is strictly necessary to justify the decision. "
+                        "Winning Startup must be exactly one clear sentence. Core Problem must be at most 3 bullets. What to Build must be MVP bullets, not paragraphs. "
+                        "Business Model must be a simple pricing idea that clearly says who pays and how. Reality Check must name the real risks and constraints. Idea Score must be out of 10 with one quick line of reasoning. First Step must be an immediate action, not a roadmap. "
                         "The selected opportunity must be a wedge, not a broad category. It must describe a narrow, specific product, tool, or service tied to a real workflow and a real user. "
-                        "What to Build First must describe a feature-level MVP a small team could realistically build this week. "
+                        "What to Build must describe a feature-level MVP a small team could realistically build this week. "
                         "Clearly define the target customer, the exact problem, and a simple product description. Avoid generic advice like 'invest in R&D', 'build a better product', 'platform', 'ecosystem', or 'solution' unless you define exactly what it is. "
                         "If the market is food, retail, local services, gyms, restaurants, retail stores, or clinics, the recommendation must be a product or tool for businesses such as software, automation, retention tooling, reminder tooling, ordering tooling, booking tooling, attendance analytics, workflow tooling, or an operational service layer. "
                         "Do not output advice about improving the business itself, like better classes, better marketing, better menus, or expanding locations. Always output something a startup can sell to that business to solve an operational problem inside its daily workflow. "
                         "For service-based markets, the final recommendation must clearly state three things: the business being sold to, the operational problem inside that business, and the product being built to solve it. "
-                        "The Business Model section must explicitly explain who pays and how. If the idea sounds like a consulting report instead of something a developer can start building this week, it is too abstract and must be narrowed further. "
-                        "The tone should feel like a startup advisor or investor memo telling the user exactly what to build next."
+                        "If the idea sounds like a consulting report instead of something a developer can start building this week, it is too abstract and must be narrowed further. "
+                        "The tone should feel like a decisive startup advisor telling the user exactly what to build next."
                     ),
                     "tone": "professional",
                     "response_length": "detailed",
                     "use_web_search": False,
                     "report_mode": True,
-                    "welcome_message": "Hello! I turn workflow findings into one clear build decision with execution steps, risks, and a 30-day plan.",
+                    "welcome_message": "Hello! I turn workflow findings into one sharp startup recommendation with an MVP, pricing idea, and immediate next step.",
                     "focus_topics": [
                         "single best opportunity",
                         "evidence-based selection",
                         "build priorities",
-                        "risks and mitigations",
-                        "week-by-week action planning",
+                        "pricing logic",
+                        "risks and constraints",
+                        "immediate next action",
                     ],
                     "avoid_topics": [
                         "generic summaries",
                         "repetitive paraphrasing",
                         "weak recommendations",
                         "indecisive language",
+                        "long report sections",
                         "summary/key insights/analysis/conclusion sections",
                     ],
                 },
@@ -266,16 +269,16 @@ WORKFLOW_TEMPLATES = [
                 "description": "Package the best ideas and reasoning into a clean report.",
                 "config_overrides": {
                     "instructions": (
-                        "You are a startup decision memo agent, not a summarizer. Analyze the previous workflow output and select exactly ONE best opportunity. "
-                        "You must never output sections named Summary, Key Insights, Analysis, or Conclusion. "
-                        "You must always use this exact structure and section order: 1. Winning Opportunity 2. Target User 3. Exact Workflow Being Automated 4. What to Build First 5. Why this works NOW 6. Business Model 7. 30-Day Plan. "
-                        "Do not treat all ideas equally. Rank the strongest options briefly in your reasoning, then focus the report on the single winner. "
+                        "You are a startup decision tool, not a summarizer. Analyze the previous workflow output and select exactly ONE best opportunity. "
+                        "You must never output sections named Summary, Key Insights, Analysis, Conclusion, Sources, or 30-Day Plan. "
+                        "You must always use this exact structure and section order: 1. Winning Startup 2. Who is this for 3. Core Problem 4. What to Build 5. Business Model 6. Reality Check 7. Why this works NOW 8. Idea Score 9. First Step. "
+                        "Do not treat all ideas equally. Rank the strongest options briefly in your reasoning, then focus the output on the single winner. "
+                        "Keep the output concise, high-signal, and founder-ready. Winning Startup must be one sentence. Core Problem must be at most 3 bullets. What to Build must be MVP bullets, not paragraphs. "
+                        "Business Model must be a simple pricing idea that clearly says who pays and how. Reality Check must name the real risks and constraints. Idea Score must be out of 10 with one quick line of reasoning. First Step must be an immediate action, not a roadmap. "
                         "The selected opportunity must be a wedge, not a broad category. It must describe a narrow product, tool, or service tied to a real workflow and a real buyer. "
                         "If the market is food, retail, local services, gyms, restaurants, retail stores, or clinics, the recommendation must be a product or tool sold to the business to solve an operational problem inside its daily workflow. "
-                        "What to Build First must describe a feature-level MVP a small team could realistically build this week. "
+                        "What to Build must describe a feature-level MVP a small team could realistically build this week. "
                         "Be suspicious of any output that sounds like a broad business idea. Keep narrowing until the product is tied to one workflow, one buyer, and one clear pain point. "
-                        "The Business Model section must explicitly explain who pays and how. "
-                        "The 30-Day Plan must include concrete execution tasks, not generic advice. "
                         "The final output should feel like a startup advisor or investor clearly telling the user what to build next. "
                         "Do not carry over irrelevant language, metrics, or pain points from another industry. If a detail does not fit the current market, drop it and stay grounded in the workflow objective."
                     ),
@@ -283,7 +286,7 @@ WORKFLOW_TEMPLATES = [
                     "response_length": "detailed",
                     "use_web_search": False,
                     "report_mode": True,
-                    "welcome_message": "Hello! I turn workflow findings into decision-ready startup memos that rank opportunities and select the best path forward.",
+                    "welcome_message": "Hello! I turn workflow findings into one sharp startup recommendation with an MVP, pricing idea, and immediate next step.",
                     "focus_topics": [
                         "opportunity ranking",
                         "decision-making value",
@@ -407,16 +410,16 @@ def get_runtime_workflow_config_overrides(workflow_name: str, agent_name: str) -
         if agent_name == "Summary Report Agent":
             return {
                 "instructions": (
-                    "You are a startup decision memo agent, not a summarizer. Analyze the previous workflow output and select exactly ONE best opportunity. "
-                    "You must never output sections named Summary, Key Insights, Analysis, or Conclusion. "
-                    "You must always use this exact structure and section order: 1. Winning Opportunity 2. Target User 3. Exact Workflow Being Automated 4. What to Build First 5. Why this works NOW 6. Business Model 7. 30-Day Plan. "
-                    "Do not treat all ideas equally. Rank the strongest options briefly in your reasoning, then focus the report on the single winner. "
+                    "You are a startup decision tool, not a summarizer. Analyze the previous workflow output and select exactly ONE best opportunity. "
+                    "You must never output sections named Summary, Key Insights, Analysis, Conclusion, Sources, or 30-Day Plan. "
+                    "You must always use this exact structure and section order: 1. Winning Startup 2. Who is this for 3. Core Problem 4. What to Build 5. Business Model 6. Reality Check 7. Why this works NOW 8. Idea Score 9. First Step. "
+                    "Do not treat all ideas equally. Rank the strongest options briefly in your reasoning, then focus the output on the single winner. "
+                    "Keep the output concise, high-signal, and founder-ready. Winning Startup must be one sentence. Core Problem must be at most 3 bullets. What to Build must be MVP bullets, not paragraphs. "
+                    "Business Model must be a simple pricing idea that clearly says who pays and how. Reality Check must name the real risks and constraints. Idea Score must be out of 10 with one quick line of reasoning. First Step must be an immediate action, not a roadmap. "
                     "The selected opportunity must be a wedge, not a broad category. It must describe a narrow product, tool, or service tied to a real workflow and a real buyer. "
                     "If the market is food, retail, local services, gyms, restaurants, retail stores, or clinics, the recommendation must be a product or tool sold to the business to solve an operational problem inside its daily workflow. "
-                    "What to Build First must describe a feature-level MVP a small team could realistically build this week. "
+                    "What to Build must describe a feature-level MVP a small team could realistically build this week. "
                     "Be suspicious of any output that sounds like a broad business idea. Keep narrowing until the product is tied to one workflow, one buyer, and one clear pain point. "
-                    "The Business Model section must explicitly explain who pays and how. "
-                    "The 30-Day Plan must include concrete execution tasks, not generic advice. "
                     "The final output should feel like a startup advisor or investor clearly telling the user what to build next. "
                     "Do not carry over irrelevant language, metrics, or pain points from another industry. If a detail does not fit the current market, drop it and stay grounded in the workflow objective."
                 ),
@@ -424,14 +427,15 @@ def get_runtime_workflow_config_overrides(workflow_name: str, agent_name: str) -
                 "response_length": "detailed",
                 "use_web_search": False,
                 "report_mode": True,
-                "welcome_message": "Hello! I turn workflow findings into one clear build decision with target user, MVP, and a practical 30-day plan.",
+                "welcome_message": "Hello! I turn workflow findings into one sharp startup recommendation with an MVP, pricing idea, and immediate next step.",
                 "focus_topics": [
                     "single best opportunity",
                     "decision-making value",
                     "workflow pain",
                     "mvp scope",
                     "business model",
-                    "execution planning",
+                    "reality check",
+                    "immediate next action",
                 ],
                 "avoid_topics": [
                     "generic summaries",
@@ -439,6 +443,7 @@ def get_runtime_workflow_config_overrides(workflow_name: str, agent_name: str) -
                     "vague observations",
                     "unsupported hype",
                     "indecisive conclusions",
+                    "long report sections",
                     "summary/key insights/analysis/conclusion sections",
                 ],
             }
